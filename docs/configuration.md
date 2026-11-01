@@ -33,6 +33,10 @@ Needed for password reset, reminders and contact replies.
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | empty | |
 | `CONFIRMATION_CODE_SENDS_PER_HOUR` | `5` | Codes one address can receive per hour, 0 turns it off |
 | `SMTP_FROM` | `SMTP_USERNAME` | If neither is a valid address, email stays off and the log says why |
+
+Port 465 uses TLS from the start. Other ports use STARTTLS, which is required on 25, 587 and 2525 and whenever a username is set; only a server without credentials on another port, such as a local mail catcher, may do without it. The server's certificate has to match its name.
+
+Changing the SMTP host or username in the settings clears a stored SMTP password, so enter it again in the same save or afterwards. If any of the host, username or password is in the environment, the settings page refuses changes to the host and username: change them in the environment. The S3 endpoint works the same way with `AWS_S3_ENDPOINT` and `AWS_S3_SECRET_KEY`.
 | `EMAIL_SENDER_NAME` | `ExamPrep` | |
 
 ## Image storage

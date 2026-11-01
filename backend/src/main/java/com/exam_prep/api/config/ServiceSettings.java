@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -36,6 +37,12 @@ public class ServiceSettings {
             "smtp_username", "SMTP_USERNAME",
             "smtp_password", "SMTP_PASSWORD");
 
+    /** Each of these says where a secret is sent or who it belongs to, so the secret is only good for its value. */
+    private static final Map<String, String> SECRET_TIED_TO = Map.of(
+            "smtp_host", "smtp_password",
+            "smtp_username", "smtp_password",
+            "s3_endpoint", "s3_secret_key");
+
     private final Environment env;
     private final SiteConfigRepository siteConfigRepository;
     private final AiSecretCipher cipher;
@@ -47,6 +54,10 @@ public class ServiceSettings {
         }
         String stored = siteConfigRepository.findById(key).map(SiteConfigEntity::getValue).orElse(null);
         return SECRET_KEYS.contains(key) ? decrypt(key, stored) : stored;
+    }
+
+    public static Optional<String> secretTiedTo(String key) {
+        return Optional.ofNullable(SECRET_TIED_TO.get(key));
     }
 
     public boolean isEnvManaged(String key) {

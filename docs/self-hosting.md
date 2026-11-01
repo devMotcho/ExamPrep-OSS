@@ -84,6 +84,8 @@ Upgrading to this version signs everyone out once, as stored refresh tokens are 
 
 S3 and SMTP secrets set in the environment are removed from the database on startup. Secrets you entered in the settings are encrypted on startup when `AI_SETTINGS_ENCRYPTION_KEY` is set.
 
+Mail on port 465 now uses TLS from the start, and STARTTLS is required on other ports as described in [configuration](configuration.md). A mail server that doesn't offer it stops receiving mail from this app until it does.
+
 New password registrations are only marked confirmed when `confirmation_code_enabled` is on. Accounts that already exist keep their state. See [architecture](architecture.md#authentication).
 
 `GET /api/api/study-areas` now returns one page of summaries (`page`, `size`, `q`) instead of a full list, and `POST /api/auth/send-code` needs a `purpose`. Scripts using the API must follow. `Authorization: Bearer` is no longer accepted.

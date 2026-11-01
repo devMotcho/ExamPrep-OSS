@@ -81,11 +81,22 @@ export function useSettings() {
 
     setIsSaving(true);
     try {
-      await configService.bulkSave(updates);
-      setBaselineConfig({ ...formData });
+      const { data: saved } = await configService.bulkSave(updates);
+      // The server can clear a secret that belongs to a changed host or endpoint.
+      const cleared = saved.filter((entity: { key: string; value: string }) =>
+        entity.value === '' && !(entity.key in updates) && formData[entity.key as ConfigKey]);
+      const result = { ...formData };
+      cleared.forEach((entity: { key: string }) => { result[entity.key as ConfigKey] = ''; });
+      setFormData(result);
+      setBaselineConfig(result);
       setUnsavedGroups((prev) => { const next = new Set(prev); next.delete(group); return next; });
       window.dispatchEvent(new CustomEvent('app-config-updated'));
-      toast({ type: 'success', message: 'Settings saved successfully.' });
+      toast({
+        type: 'success',
+        message: cleared.length > 0
+          ? 'Settings saved. The stored password or secret key was cleared with this change: enter it again.'
+          : 'Settings saved successfully.',
+      });
     } catch (err) {
       toast({ type: 'error', message: getErrorMessage(err, 'Failed to save settings. Please try again.') });
     } finally {

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * Builds the {@link JavaMailSender} used for outbound email, honoring an optional
@@ -35,9 +36,12 @@ import java.util.Properties;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-class DynamicMailSenderFactory {
+public class DynamicMailSenderFactory {
 
     private static final String DEFAULT_SMTP_PORT = "587";
+    private static final int IMPLICIT_TLS_PORT = 465;
+    /** Ports with a mail server expected to offer STARTTLS. A local catcher on another port has no need to. */
+    private static final Set<Integer> STARTTLS_PORTS = Set.of(25, 587, 2525);
 
     private final JavaMailSender fallbackMailSender;
     private final NotificationProperties properties;
@@ -45,7 +49,7 @@ class DynamicMailSenderFactory {
     private final ServiceSettings serviceSettings;
 
     @Cacheable("smtpMailSender")
-    JavaMailSender getMailSender() {
+    public JavaMailSender getMailSender() {
         Map<String, String> config = loadSmtpConfig();
         String host = config.get(SiteConfigKey.SMTP_HOST.key());
 
@@ -55,7 +59,8 @@ class DynamicMailSenderFactory {
 
         JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
         mailSender.setHost(host);
-        mailSender.setPort(parsePort(config.get(SiteConfigKey.SMTP_PORT.key())));
+        int port = parsePort(config.get(SiteConfigKey.SMTP_PORT.key()));
+        mailSender.setPort(port);
         String username = config.getOrDefault(SiteConfigKey.SMTP_USERNAME.key(), "");
         mailSender.setUsername(username);
         mailSender.setPassword(config.getOrDefault(SiteConfigKey.SMTP_PASSWORD.key(), ""));
@@ -64,7 +69,7 @@ class DynamicMailSenderFactory {
         props.put("mail.transport.protocol", "smtp");
         // Relays without credentials (a local catcher, for instance) refuse an AUTH attempt.
         props.put("mail.smtp.auth", String.valueOf(!username.isBlank()));
-        props.put("mail.smtp.starttls.enable", "true");
+        applyTransportSecurity(props, port, !username.isBlank());
         props.put("mail.smtp.connectiontimeout", "5000");
         props.put("mail.smtp.timeout", "10000");
         props.put("mail.smtp.writetimeout", "10000");
@@ -72,9 +77,23 @@ class DynamicMailSenderFactory {
         return mailSender;
     }
 
+    /**
+     * Port 465 starts with TLS. Anywhere else mail starts in the clear and upgrades, which must not be optional:
+     * a server, or anything between, could otherwise just not offer it. Credentials always require it.
+     */
+    static void applyTransportSecurity(Properties props, int port, boolean hasCredentials) {
+        if (port == IMPLICIT_TLS_PORT) {
+            props.put("mail.smtp.ssl.enable", "true");
+        } else {
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.starttls.required", String.valueOf(hasCredentials || STARTTLS_PORTS.contains(port)));
+        }
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
+    }
+
     /** Call after any update to SMTP-related site config so the next send re-reads it. */
     @CacheEvict(value = "smtpMailSender", allEntries = true)
-    void invalidateCache() {
+    public void invalidateCache() {
         log.info("SMTP mail sender cache invalidated");
     }
 
