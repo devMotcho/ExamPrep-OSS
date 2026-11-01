@@ -1,3 +1,4 @@
+import { stripHtml } from '@/lib/stripHtml';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { examprepApi, type StudyArea, type Question } from '@/api/examprep';
@@ -211,12 +212,6 @@ export const StudyAreaEdit: React.FC = () => {
     } finally {
       setChapterToDelete(null);
     }
-  };
-
-  const stripHtml = (html: string) => {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
   };
 
   const renderQuestionRow = (q: Question, idx: number, draggableIndex: number) => {

@@ -1,3 +1,4 @@
+import { stripHtml } from '@/lib/stripHtml';
 import { formatDecimal } from '@/lib/format';
 import { sanitizeHtml } from '../lib/sanitizeHtml';
 import React, { useState, useEffect } from 'react';
@@ -78,13 +79,6 @@ export const StudyAreaDetail: React.FC = () => {
   const isAdmin = user?.role === 'ROLE_ADMIN';
   const isDev = user?.role === 'ROLE_DEV';
   const marks = useQuestionMarks(isAuthenticated ? id : undefined);
-
-  const stripHtml = (html: string) => {
-    if (!html) return '';
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-  };
 
   const renderQuestionItem = (q: Question, index: number) => {
     const isExpanded = expandedQuestionId === q.id;

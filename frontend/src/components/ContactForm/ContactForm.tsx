@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/lib/stripHtml';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { axiosInstance } from '../../api/axiosInstance';
@@ -347,7 +348,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({ metadata }) => {
                 <h3 className="text-xs font-bold text-foreground">{t('contact.form.verifyTitle', 'Verify Your Message Submission')}</h3>
                 <p 
                   className="text-[11px] text-muted-foreground leading-normal" 
-                  dangerouslySetInnerHTML={{ __html: t('contact.form.verifyDesc', 'We have sent a 6-digit confirmation code to <strong class="text-foreground">{{email}}</strong>. Please enter it below to complete sending your message.', { email }) }}
+                  dangerouslySetInnerHTML={{ __html: t('contact.form.verifyDesc', 'We have sent a 6-digit confirmation code to <strong class="text-foreground">{{email}}</strong>. Please enter it below to complete sending your message.', { email: escapeHtml(email) }) }}
                 />
               </div>
 

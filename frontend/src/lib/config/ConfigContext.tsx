@@ -28,7 +28,7 @@ export const ConfigProvider = ({ children }: { children: ReactNode }) => {
     const secondaryDark = conf.secondary_color_dark || conf.secondary_color;
     const accentDark = conf.accent_color_dark || conf.accent_color;
 
-    styleEl.innerHTML = `
+    styleEl.textContent = `
       :root {
         --color-primary: ${hexToHSL(conf.primary_color)};
         --primary-foreground: ${getContrastForegroundHSL(conf.primary_color)};

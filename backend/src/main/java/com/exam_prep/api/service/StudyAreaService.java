@@ -35,8 +35,8 @@ public class StudyAreaService {
     @Transactional
     public StudyAreaDto createStudyArea(StudyAreaDto dto, UserEntity user) {
         StudyAreaEntity studyArea = StudyAreaEntity.builder()
-                .title(dto.getTitle())
-                .description(dto.getDescription())
+                .title(RichTextSanitizer.plainText(dto.getTitle()))
+                .description(RichTextSanitizer.plainText(dto.getDescription()))
                 .visibility(dto.getVisibility() != null ? dto.getVisibility() : Visibility.PUBLIC)
                 .createdBy(user)
                 .build();
@@ -148,9 +148,9 @@ public class StudyAreaService {
 
         QuestionEntity question = QuestionEntity.builder()
                 .studyArea(studyArea)
-                .prompt(questionDto.getPrompt())
+                .prompt(RichTextSanitizer.richText(questionDto.getPrompt()))
                 .imageUrl(questionDto.getImageUrl())
-                .explanation(questionDto.getExplanation())
+                .explanation(RichTextSanitizer.richText(questionDto.getExplanation()))
                 .chapter(chapter)
                 .createdBy(user)
                 .options(new ArrayList<>())
@@ -163,7 +163,7 @@ public class StudyAreaService {
         for (OptionDto optDto : questionDto.getOptions()) {
             OptionEntity opt = OptionEntity.builder()
                     .question(question)
-                    .text(optDto.getText())
+                    .text(RichTextSanitizer.plainText(optDto.getText()))
                     .build();
             opt = optionRepository.save(opt);
             question.getOptions().add(opt);
@@ -218,9 +218,9 @@ public class StudyAreaService {
             }
         }
 
-        question.setPrompt(questionDto.getPrompt());
+        question.setPrompt(RichTextSanitizer.richText(questionDto.getPrompt()));
         question.setImageUrl(questionDto.getImageUrl());
-        question.setExplanation(questionDto.getExplanation());
+        question.setExplanation(RichTextSanitizer.richText(questionDto.getExplanation()));
         question.setChapter(chapter);
 
         // Remove old options from repository
@@ -234,7 +234,7 @@ public class StudyAreaService {
             OptionDto optDto = questionDto.getOptions().get(i);
             OptionEntity opt = OptionEntity.builder()
                     .question(question)
-                    .text(optDto.getText())
+                    .text(RichTextSanitizer.plainText(optDto.getText()))
                     .build();
             opt = optionRepository.save(opt);
             question.getOptions().add(opt);
@@ -307,8 +307,8 @@ public class StudyAreaService {
             throw new AppException("Title is required", HttpStatus.BAD_REQUEST);
         }
 
-        studyArea.setTitle(dto.getTitle().trim());
-        studyArea.setDescription(dto.getDescription() != null ? dto.getDescription().trim() : null);
+        studyArea.setTitle(RichTextSanitizer.plainText(dto.getTitle().trim()));
+        studyArea.setDescription(dto.getDescription() != null ? RichTextSanitizer.plainText(dto.getDescription().trim()) : null);
         if (dto.getVisibility() != null) {
             studyArea.setVisibility(dto.getVisibility());
         }
@@ -386,7 +386,7 @@ public class StudyAreaService {
                     if (chapter == null) {
                         chapter = ChapterEntity.builder()
                                 .studyArea(studyArea)
-                                .title(chapterTitle)
+                                .title(RichTextSanitizer.plainText(chapterTitle))
                                 .build();
                         chapter = chapterRepository.saveAndFlush(chapter);
                         chapterCache.put(cacheKey, chapter);
@@ -526,7 +526,7 @@ public class StudyAreaService {
 
         ChapterEntity chapter = ChapterEntity.builder()
                 .studyArea(studyArea)
-                .title(chapterDto.getTitle().trim())
+                .title(RichTextSanitizer.plainText(chapterDto.getTitle().trim()))
                 .build();
 
         chapter = chapterRepository.save(chapter);
@@ -553,7 +553,7 @@ public class StudyAreaService {
             throw new AppException("Chapter title is required", HttpStatus.BAD_REQUEST);
         }
 
-        chapter.setTitle(chapterDto.getTitle().trim());
+        chapter.setTitle(RichTextSanitizer.plainText(chapterDto.getTitle().trim()));
         chapter = chapterRepository.save(chapter);
 
         return ChapterDto.builder()
