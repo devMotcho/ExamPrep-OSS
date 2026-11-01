@@ -18,7 +18,7 @@
     "@base-ui/react": "^1.4.1",
     "@fontsource-variable/geist": "^5.2.8",
     "@hello-pangea/dnd": "^18.0.1",
-    "@sentry/react": "^10.0.0",
+    "@sentry/react": "^11.10.0",
     "@tiptap/core": "^3.32.2",
     "@tiptap/extension-placeholder": "^3.32.2",
     "@tiptap/extension-strike": "^3.32.2",
