@@ -3,6 +3,8 @@ package com.exam_prep.api.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -71,6 +73,72 @@ class RateLimitFilterTest {
         assertEquals(429, post(filter, "/api/auth/login/"));
         assertEquals(429, post(filter, "/api//auth/login"));
         assertEquals(429, post(filter, "/api/auth/login;x=1"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/api/auth/login, /api/auth/%6Cogin",
+            "/api/auth/login, /api/auth/%6c%6f%67%69%6e",
+            "/api/auth/login, /api/%61uth/login",
+            "/api/auth/login, /%61pi/auth/login",
+            "/api/auth/login, /api/auth/%256Cogin",
+            "/api/auth/login, /api/auth/./login",
+            "/api/auth/login, /api/auth/%2e/login",
+            "/api/auth/login, /api/x/../auth/login",
+            "/api/auth/login, /api/x/%2E%2E/auth/login",
+            "/api/auth/login, /api/auth%2Flogin",
+            "/api/auth/login, /api/auth%5Clogin",
+            "/api/auth/login, /api/auth;a=1/login;b=2/",
+            "/api/auth/login, /api/auth/login%2F",
+            "/api/auth/login, /api/auth/login%3Bx=1",
+            "/api/auth/register, /api/auth/%72egister",
+            "/api/auth/send-code, /api/auth/send%2Dcode",
+            "/api/auth/reset-password, /api/auth/reset%2Dpassword",
+            "/api/auth/change-password, /api/auth/change%2dpassword",
+            "/api/auth/confirm-email, /api/auth/confirm%2Demail",
+            "/api/auth/oauth2/exchange, /api/auth/oauth2/%65xchange",
+            "/api/contact, /api/%63ontact",
+            "/api/auth/telemetry/visit, /api/auth/telemetry/%76isit",
+    })
+    void everySpellingOfASensitiveRouteSharesItsBucket(String route, String spelling) throws Exception {
+        properties.setLoginLimit(1);
+        properties.setRegisterLimit(1);
+        properties.setContactLimit(1);
+        properties.setTelemetryLimit(1);
+        RateLimitFilter filter = filter();
+
+        assertEquals(route, RateLimitFilter.normalizeRoute(spelling));
+        assertEquals(200, post(filter, route));
+        assertEquals(429, post(filter, spelling));
+    }
+
+    @Test
+    void spellingsCannotStartAFreshBucketOneAfterTheOther() throws Exception {
+        properties.setLoginLimit(2);
+        RateLimitFilter filter = filter();
+        assertEquals(200, post(filter, "/api/auth/%6Cogin"));
+        assertEquals(200, post(filter, "/api/auth/l%6Fgin"));
+        assertEquals(429, post(filter, "/api/auth/lo%67in"));
+        assertEquals(429, post(filter, "/api/auth/login"));
+    }
+
+    @Test
+    void encodedIdsShareOneBucket() {
+        assertEquals("/api/api/questions/{id}",
+                RateLimitFilter.normalizeRoute("/api/api/questions/%36f1d2c3a-1111-4222-8333-444455556666"));
+    }
+
+    @Test
+    void anUndecodablePathIsLeftAlone() {
+        assertEquals("/api/auth/%zzlogin", RateLimitFilter.normalizeRoute("/api/auth/%zzlogin"));
+    }
+
+    @Test
+    void aLineBreakInAPathDoesNotBreakAnything() throws Exception {
+        properties.setDefaultLimit(1);
+        RateLimitFilter filter = filter();
+        assertEquals(200, send(filter, "GET", "/api/x%0Ay", "10.0.0.1"));
+        assertEquals(429, send(filter, "GET", "/api/x%0Ay", "10.0.0.1"));
     }
 
     @Test
