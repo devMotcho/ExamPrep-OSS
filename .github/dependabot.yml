@@ -3,7 +3,7 @@ updates:
   - package-ecosystem: maven
     directory: /backend
     schedule:
-      interval: weekly
+      interval: monthly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -11,7 +11,7 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
+      interval: monthly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -24,14 +24,14 @@ updates:
       - /backend
       - /infra
     schedule:
-      interval: weekly
+      interval: monthly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
