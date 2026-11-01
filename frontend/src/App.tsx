@@ -145,7 +145,7 @@ const App: React.FC = () => (
   <GlobalErrorBoundary>
     <ToastProvider>
       <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: true }}>
+      <BrowserRouter>
         <SEO />
         <TelemetryTracker />
         <Suspense fallback={<PageLoader />}>

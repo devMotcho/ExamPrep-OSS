@@ -16,4 +16,4 @@ Only the latest `main` is supported.
 - The Content-Security-Policy keeps `style-src 'unsafe-inline'`, which the app's theme colours and UI components use, and allows images and video from any `https:` host, as S3-compatible hosts differ per installation.
 - S3 and SMTP secrets entered in the settings are stored unencrypted when `AI_SETTINGS_ENCRYPTION_KEY` is not set. The settings page says so. Secrets in the environment are never stored.
 - The SMTP port and S3 bucket and region can still be changed in the settings without re-entering a secret; only the host, username and endpoint are tied to one.
-- `npm audit` still lists advisories that need major upgrades, mostly in build and test tooling (`vite`, `vitest`, `eslint`); these are not part of the served app. `react-router-dom` needs a major upgrade too and is.
+- `npm audit` still lists advisories that need major upgrades, mostly in build and test tooling (`vite`, `vitest`, `eslint`); these are not part of the served app.
