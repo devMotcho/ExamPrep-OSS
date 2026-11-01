@@ -12,6 +12,7 @@ import com.exam_prep.api.notification.NotificationPayload;
 import com.exam_prep.api.notification.NotificationType;
 import com.exam_prep.api.repository.ContactMessageRepository;
 import com.exam_prep.api.repository.SiteConfigRepository;
+import com.exam_prep.api.security.ClientIpResolver;
 import com.exam_prep.api.service.ConfirmationCodeService;
 
 import java.time.Instant;
@@ -109,7 +110,7 @@ public class ContactService {
         Instant now = Instant.now();
         Instant oneHourAgo = now.minus(1, ChronoUnit.HOURS);
 
-        List<Instant> attempts = rateLimitMap.compute(ipAddress, (ip, timestamps) -> {
+        List<Instant> attempts = rateLimitMap.compute(ClientIpResolver.limitKey(ipAddress), (ip, timestamps) -> {
             if (timestamps == null) {
                 return new ArrayList<>(List.of(now));
             }

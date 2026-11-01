@@ -94,7 +94,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest requestBody, HttpServletResponse response) {
-        String ip = clientIpResolver.resolveClientIp(request);
+        String ip = clientIpResolver.resolveClientKey(request);
         String username = requestBody.getEmail();
         
         // 1. Check if currently locked out

@@ -85,7 +85,8 @@ app:
     register-limit: 3
     contact-limit: 3
     telemetry-limit: ${RATE_LIMIT_TELEMETRY:30}
-    default-limit: 60
+    default-limit: ${RATE_LIMIT_DEFAULT:120}
+    total-limit: ${RATE_LIMIT_TOTAL:600}
   # Per user, for gallery images and question imports. 0 turns a limit off. The multipart limit above still
   # caps every file at 50MB. Blog media (admins only) and AI PDFs (their own 32MB limit and quota) are separate.
   upload:

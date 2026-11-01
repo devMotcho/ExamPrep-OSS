@@ -15,5 +15,7 @@ public class RateLimitProperties {
     private int registerLimit = 3;
     private int contactLimit = 3;
     private int telemetryLimit = 30;
-    private int defaultLimit = 60;
+    private int defaultLimit = 120;
+    /** All requests from one client per minute, on top of the limit of each route. */
+    private int totalLimit = 600;
 }
