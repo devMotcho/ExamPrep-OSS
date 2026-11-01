@@ -84,6 +84,8 @@ Upgrading to this version signs everyone out once, as stored refresh tokens are 
 
 S3 and SMTP secrets set in the environment are removed from the database on startup. Secrets you entered in the settings are encrypted on startup when `AI_SETTINGS_ENCRYPTION_KEY` is set.
 
+New password registrations are only marked confirmed when `confirmation_code_enabled` is on. Accounts that already exist keep their state. See [architecture](architecture.md#authentication).
+
 `GET /api/api/study-areas` now returns one page of summaries (`page`, `size`, `q`) instead of a full list, and `POST /api/auth/send-code` needs a `purpose`. Scripts using the API must follow. `Authorization: Bearer` is no longer accepted.
 
 ## Before you open registration

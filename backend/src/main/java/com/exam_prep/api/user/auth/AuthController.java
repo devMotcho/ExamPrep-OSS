@@ -91,10 +91,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest requestBody) {
-        if (confirmationCodeService.isConfirmationCodeEnabled()) {
+        boolean emailVerified = confirmationCodeService.isConfirmationCodeEnabled();
+        if (emailVerified) {
             confirmationCodeService.validateConfirmationCode(requestBody.getEmail(), requestBody.getCode(), CodePurpose.REGISTER);
         }
-        authService.register(requestBody);
+        authService.register(requestBody, emailVerified);
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
 

@@ -39,9 +39,12 @@ public class AuthService {
      * Registration deliberately keeps its 409 for a taken address, so people can tell they already have an
      * account. It therefore reveals whether an email is registered, unlike send-code and reset-password;
      * the register rate limit is what slows down enumeration through this endpoint.
+     *
+     * @param emailVerified Whether the caller checked a code sent to the address. Nothing else proves that this
+     *                      person owns it, so without one the account stays unconfirmed.
      */
     @Transactional
-    public UserEntity register(RegisterRequest request) {
+    public UserEntity register(RegisterRequest request, boolean emailVerified) {
         boolean isRegisterEnabled = siteConfigRepository.findById("register_enabled")
                 .map(entity -> "true".equalsIgnoreCase(entity.getValue()))
                 .orElse(true);
@@ -65,7 +68,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ROLE_USER")
                 .isActive(true)
-                .isConfirmed(true)
+                .isConfirmed(emailVerified)
                 .build();
 
         return userRepository.save(user);
@@ -91,11 +94,19 @@ public class AuthService {
     /**
      * Sets a new password and signs the user out of every device. An unknown address is ignored without
      * an error: codes can be requested for any address, so its owner must not learn whether an account exists.
+     *
+     * <p>The code proves who owns the address. If the account was unconfirmed until now, whoever set up its
+     * social sign-in never showed that, so the link goes.
      */
     @Transactional
     public void resetPassword(String email, String newPassword) {
         userRepository.findByEmail(email).ifPresent(user -> {
             user.setPassword(passwordEncoder.encode(newPassword));
+            if (!user.isConfirmed()) {
+                user.setOauthProvider(null);
+                user.setOauthSubject(null);
+                user.setConfirmed(true);
+            }
             userRepository.save(user);
             refreshTokenRepository.revokeAllForUser(user);
         });
@@ -193,6 +204,8 @@ public class AuthService {
      * @param subject  Stable provider-issued unique user ID.
      * @param emailVerified Whether the provider vouches for the email. An existing account is only
      *                      linked when it does, or anyone able to claim an address could take it over.
+     *                      Linking to an unconfirmed account also removes its password and sessions, as
+     *                      whoever created them never proved they own the address, and confirms it.
      * @return The persisted UserEntity.
      */
     @Transactional
@@ -218,6 +231,11 @@ public class AuthService {
             if (!user.isActive()) {
                 throw new AppException("Account is disabled", HttpStatus.FORBIDDEN);
             }
+            if (!user.isConfirmed()) {
+                user.setPassword(noLocalPassword(provider));
+                refreshTokenRepository.revokeAllForUser(user);
+                user.setConfirmed(true);
+            }
             user.setOauthProvider(provider);
             user.setOauthSubject(subject);
             if (user.getName() == null && name != null) {
@@ -238,7 +256,7 @@ public class AuthService {
         UserEntity newUser = UserEntity.builder()
                 .name(name)
                 .email(email)
-                .password("OAUTH_" + provider.toUpperCase()) // sentinel — no local password
+                .password(noLocalPassword(provider))
                 .role("ROLE_USER")
                 .isActive(true)
                 .isConfirmed(emailVerified) // Only the provider's word confirms an address.
@@ -248,5 +266,10 @@ public class AuthService {
 
         newUser.setLastLoginAt(java.time.ZonedDateTime.now());
         return userRepository.save(newUser);
+    }
+
+    /** Not a password hash, so no password ever matches it. */
+    private static String noLocalPassword(String provider) {
+        return "OAUTH_" + provider.toUpperCase();
     }
 }

@@ -80,6 +80,39 @@ class RefreshTokenRotationTest {
     }
 
     @Test
+    void aRevokedFamilyFailsEvenInsideTheGracePeriod() {
+        // Ending a family deletes its rows, so what is left of any of its tokens is an unknown hash.
+        when(tokens.findByTokenHash(TokenHash.sha256(PRESENTED))).thenReturn(Optional.empty());
+
+        AppException e = assertThrows(AppException.class, () -> service.rotateRefreshToken(PRESENTED));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatus());
+        verify(tokens, never()).markRotated(any(), any());
+        verify(tokens, never()).save(any());
+    }
+
+    @Test
+    void aRepeatInsideTheGracePeriodNeverIssuesAToken() {
+        stored(true, ZonedDateTime.now().minusSeconds(1));
+
+        assertThrows(AppException.class, () -> service.rotateRefreshToken(PRESENTED));
+
+        verify(tokens, never()).markRotated(any(), any());
+        verify(tokens, never()).save(any());
+    }
+
+    @Test
+    void aTokenRevokedWithoutRotationGetsNoGrace() {
+        stored(true, null);
+
+        AppException e = assertThrows(AppException.class, () -> service.rotateRefreshToken(PRESENTED));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatus());
+        verify(tokens).revokeFamily(family);
+        verify(tokens, never()).save(any());
+    }
+
+    @Test
     void losingARotationRaceIssuesNothing() {
         RefreshTokenEntity token = stored(false, null);
         when(tokens.markRotated(eq(token.getId()), any())).thenReturn(0);

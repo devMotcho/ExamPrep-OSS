@@ -35,6 +35,8 @@ All sign-in paths use HttpOnly cookies with a short-lived JWT and a rotating ref
 
 Social sign-in redirects to the app with a single-use code, valid for 60 seconds and tied to a cookie set on the same redirect. The app posts it to `/api/auth/oauth2/exchange`, which sets the cookies. It links to an existing account only when the provider confirms the email is verified, and a new account counts as confirmed only then too.
 
+An account is confirmed once someone has shown they own its address: a code at registration or from `/api/auth/confirm-email`, a password reset, or a provider that says the email is verified. Without confirmation codes turned on, a password registration stays unconfirmed. Signing in does not require confirmation. When ownership is shown on an unconfirmed account, what its creator set up goes: a verified provider removes the password and all sessions, and a password reset removes the social sign-in link and all sessions.
+
 Confirmation codes are bound to their purpose (`purpose` in `/api/auth/send-code`), are gone after 5 wrong guesses, and an address receives at most `CONFIRMATION_CODE_SENDS_PER_HOUR` per hour.
 
 ## Content safety
