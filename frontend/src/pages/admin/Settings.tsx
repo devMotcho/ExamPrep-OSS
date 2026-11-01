@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSettings } from '@/features/settings';
+import { configService } from '@/features/settings/services/configService';
 import type { ConfigKey } from '@/lib/config/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,6 +104,33 @@ const groupMeta: Record<string, { label: string; description: string; icon: Reac
   ai:            { label: 'AI Generation',  description: 'Provider, API keys, limits and spend cap for generating questions from PDF.', icon: <Sparkles size={16} /> },
   study_areas:   { label: 'Study Areas',    description: 'Admin backoffice for force deleting public/private study areas.', icon: <BookOpen size={16} /> },
 } as const;
+
+/** How S3 and SMTP credentials are kept depends on the server's environment, so the server is asked. */
+const SecretStorageNotice: React.FC = () => {
+  const { t } = useTranslation();
+  const [storage, setStorage] = useState<{ encryptionAvailable: boolean; envManaged: string[] } | null>(null);
+
+  useEffect(() => {
+    configService.getSecretStorage().then((res) => setStorage(res.data)).catch(() => undefined);
+  }, []);
+
+  if (!storage) return null;
+  return (
+    <div
+      role="note"
+      className={`mb-5 rounded-xl border p-3 text-sm space-y-1 ${storage.encryptionAvailable ? 'border-border/60 text-muted-foreground' : 'border-destructive/40 text-destructive'}`}
+    >
+      <p>
+        {storage.encryptionAvailable
+          ? t('secretStorage.encrypted', 'S3 and SMTP passwords entered here are encrypted before they are stored.')
+          : t('secretStorage.unencrypted', 'AI_SETTINGS_ENCRYPTION_KEY is not set: S3 and SMTP passwords entered here are stored unencrypted. Set the key, or provide them through the environment.')}
+      </p>
+      {storage.envManaged.length > 0 && (
+        <p>{t('secretStorage.envManaged', 'Set in the environment, which takes precedence: {{keys}}. Values entered here for these are ignored.', { keys: storage.envManaged.join(', ') })}</p>
+      )}
+    </div>
+  );
+};
 
 const GROUPS = ['branding', 'colors', 'features', 'contact', 'seo', 'social', 'notifications', 'oauth', 'gallery', 'ai', 'study_areas'] as const;
 
@@ -268,6 +296,7 @@ export const Settings: React.FC = () => {
           </div>
 
           <div className="flex-1 md:overflow-y-auto px-4 md:px-6 py-5 bg-muted/5">
+            {(activeGroup === 'notifications' || activeGroup === 'gallery') && <SecretStorageNotice />}
             {activeGroup === 'study_areas' ? (
               <AdminStudyAreasView />
             ) : activeGroup === 'notifications' ? (

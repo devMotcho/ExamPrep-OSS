@@ -7,6 +7,7 @@ import com.exam_prep.api.blog.BlogDtos.PostSummary;
 import com.exam_prep.api.entity.SiteConfigEntity;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.repository.SiteConfigRepository;
+import com.exam_prep.api.service.MediaTypes;
 import com.exam_prep.api.service.S3Service;
 import com.exam_prep.api.user.UserEntity;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +28,6 @@ import java.util.UUID;
 public class BlogService {
 
     private static final String MEDIA_PREFIX = "blog-media/";
-    private static final Set<String> ALLOWED_MEDIA = Set.of(
-            "video/mp4", "video/webm", "image/png", "image/jpeg", "image/webp", "image/gif");
     private static final int WORDS_PER_MINUTE = 200;
 
     private final BlogPostRepository posts;
@@ -97,19 +96,18 @@ public class BlogService {
     }
 
     public MediaResponse uploadMedia(MultipartFile file) {
-        if (file == null || file.isEmpty() || !ALLOWED_MEDIA.contains(file.getContentType())) {
-            throw new AppException("Use an MP4 or WebM video, or a PNG, JPEG, WebP or GIF image.", HttpStatus.BAD_REQUEST);
-        }
+        MediaTypes.Detected type = (file == null ? java.util.Optional.<MediaTypes.Detected>empty() : MediaTypes.detect(file))
+                .orElseThrow(() -> new AppException("Use an MP4 or WebM video, or a PNG, JPEG, WebP or GIF image.", HttpStatus.BAD_REQUEST));
         UUID id = UUID.randomUUID();
         try {
-            s3Service.uploadFile(file, MEDIA_PREFIX + id);
+            s3Service.uploadFile(file, MEDIA_PREFIX + id, type.contentType());
         } catch (IllegalStateException e) {
             throw new AppException("File storage is not configured. Set up S3 in Settings.", HttpStatus.SERVICE_UNAVAILABLE);
         } catch (IOException | SdkException e) {
             throw new AppException("Could not store the file.", HttpStatus.BAD_GATEWAY);
         }
         // No file extension: nginx serves any URL ending in .mp4 as a static asset.
-        return new MediaResponse("/api/blog/media/" + id, file.getContentType());
+        return new MediaResponse("/api/blog/media/" + id, type.contentType());
     }
 
     public String mediaUrl(UUID id) {

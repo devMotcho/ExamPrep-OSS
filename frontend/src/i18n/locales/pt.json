@@ -1,4 +1,5 @@
 {
+  "secretStorage": { "encrypted": "As palavras-passe de S3 e SMTP introduzidas aqui são cifradas antes de serem guardadas.", "unencrypted": "AI_SETTINGS_ENCRYPTION_KEY não está definida: as palavras-passe de S3 e SMTP introduzidas aqui são guardadas sem cifra. Define a chave ou fornece-as através do ambiente.", "envManaged": "Definido no ambiente, que tem prioridade: {{keys}}. Os valores introduzidos aqui para estes campos são ignorados." },
   "common": {
     "loading": "A carregar...",
     "save": "Guardar",
@@ -1053,8 +1054,10 @@
     "confirmShort": "Confirmar"
   },
   "cookies": {
+    "essentialOnly": "Apenas essenciais",
+    "allowVisits": "Permitir contagem de visitas",
     "title": "Cookies e armazenamento local",
-    "description": "Usamos cookies de sessão para te manter com sessão iniciada, e um identificador de dispositivo guardado no navegador para contar visitas. Nada é usado para publicidade nem partilhado com redes de anúncios.",
+    "description": "Usamos cookies de sessão para manter a tua sessão iniciada. Com a tua autorização, guardamos também um identificador do dispositivo no navegador para contar visitas, que esquecemos após 90 dias sem visitas. Nada é usado para publicidade nem partilhado com redes de anúncios.",
     "acknowledge": "Compreendi"
   },
   "results": {
@@ -1309,6 +1312,7 @@
       "AI_FILE_MISSING": "Seleciona um ficheiro PDF.",
       "AI_FILE_NOT_PDF": "O ficheiro não é um PDF válido.",
       "AI_FILE_TOO_LARGE": "O PDF ultrapassa o limite de 32 MB.",
+      "AI_TOO_MUCH_TEXT": "O PDF contém demasiado texto. Tenta um documento mais curto.",
       "AI_TOO_MANY_PAGES": "O PDF ultrapassa o limite de 100 páginas.",
       "AI_PDF_ENCRYPTED": "O PDF está protegido por palavra-passe. Remove a palavra-passe e tenta novamente.",
       "AI_QUOTA_EXCEEDED": "Atingiste o teu limite de gerações com IA neste período.",

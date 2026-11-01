@@ -1,4 +1,6 @@
 {
+  "cookies": { "description": "We use session cookies to keep you signed in. With your permission, we also store a device identifier in your browser to count visits, and forget it after 90 days without a visit. Nothing is used for advertising or shared with ad networks.", "essentialOnly": "Essential only", "allowVisits": "Allow visit counting" },
+  "secretStorage": { "encrypted": "S3 and SMTP passwords entered here are encrypted before they are stored.", "unencrypted": "AI_SETTINGS_ENCRYPTION_KEY is not set: S3 and SMTP passwords entered here are stored unencrypted. Set the key, or provide them through the environment.", "envManaged": "Set in the environment, which takes precedence: {{keys}}. Values entered here for these are ignored." },
   "common": {
     "loading": "Loading...",
     "save": "Save",

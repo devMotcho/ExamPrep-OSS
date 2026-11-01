@@ -6,8 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.exam_prep.api.entity.SiteConfigEntity;
-import com.exam_prep.api.repository.SiteConfigRepository;
+import com.exam_prep.api.config.ServiceSettings;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -40,18 +39,15 @@ public class S3Service {
     /** The keys this app creates: gallery/&lt;uuid&gt;[.ext] and blog-media/&lt;uuid&gt;. Nothing else may be presigned from a URL. */
     private static final Pattern OWN_KEY = Pattern.compile(
             "(gallery/[0-9a-fA-F-]{36}(\\.[A-Za-z0-9]{1,10})?|blog-media/[0-9a-fA-F-]{36})");
-    private static final Pattern SAFE_EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,10}");
 
-    private final SiteConfigRepository siteConfigRepository;
+    private final ServiceSettings serviceSettings;
 
     /** The address browsers use for an S3-compatible server, when it differs from the one this server uses. */
     @Value("${aws.s3.public-endpoint:}")
     private String publicEndpoint;
 
     private String getConfigValue(String key) {
-        return siteConfigRepository.findById(key)
-                .map(SiteConfigEntity::getValue)
-                .orElse(null);
+        return serviceSettings.resolve(key);
     }
 
     private boolean isS3Configured() {
@@ -115,36 +111,14 @@ public class S3Service {
         return builder.build();
     }
 
-    public String uploadFile(MultipartFile file) throws IOException {
-        if (!isS3Configured()) {
-            throw new IllegalStateException("S3 is not fully configured in settings.");
-        }
-
-        String bucket = getConfigValue("s3_bucket");
-        String extension = "";
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename != null && originalFilename.contains(".")) {
-            String candidate = originalFilename.substring(originalFilename.lastIndexOf("."));
-            if (SAFE_EXTENSION.matcher(candidate).matches()) {
-                extension = candidate;
-            }
-        }
-        
-        String s3Key = "gallery/" + UUID.randomUUID().toString() + extension;
-
-        try (S3Client s3Client = buildS3Client()) {
-            PutObjectRequest putOb = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(s3Key)
-                    .contentType(file.getContentType())
-                    .build();
-
-            s3Client.putObject(putOb, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-            return s3Key;
-        }
+    /** Stores an image under a generated key. The extension and type come from what the bytes turned out to be. */
+    public String uploadImage(MultipartFile file, MediaTypes.Detected type) throws IOException {
+        String s3Key = "gallery/" + UUID.randomUUID() + "." + type.extension();
+        uploadFile(file, s3Key, type.contentType());
+        return s3Key;
     }
 
-    public void uploadFile(MultipartFile file, String s3Key) throws IOException {
+    public void uploadFile(MultipartFile file, String s3Key, String contentType) throws IOException {
         if (!isS3Configured()) {
             throw new IllegalStateException("S3 is not fully configured in settings.");
         }
@@ -153,7 +127,7 @@ public class S3Service {
             PutObjectRequest putOb = PutObjectRequest.builder()
                     .bucket(getConfigValue("s3_bucket"))
                     .key(s3Key)
-                    .contentType(file.getContentType())
+                    .contentType(contentType)
                     .build();
 
             s3Client.putObject(putOb, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
@@ -218,6 +192,18 @@ public class S3Service {
         }
 
         return urlString;
+    }
+
+    /** Whether this URL points at one of this app's uploads, which may then be stored whatever its scheme. */
+    public boolean isOwnObjectUrl(String urlString) {
+        if (urlString == null || !isS3Configured()) {
+            return false;
+        }
+        try {
+            return ownKeyFrom(new URI(urlString)) != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** The object key if this URL points at one of this app's uploads in its own bucket, otherwise null. */

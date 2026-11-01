@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 
 import com.exam_prep.api.dto.ContentLimits;
 import com.exam_prep.api.entity.ContactMessageEntity;
@@ -109,18 +110,18 @@ public class AdminContactController {
                 + "</style></head><body>"
                 + "<div class='container'>"
                 + "<div class='header'><div class='logo'>ExamPrep Platform Support</div></div>"
-                + "<div class='message-body'>" + replyText.replace("\n", "<br/>") + "</div>"
+                + "<div class='message-body'>" + HtmlUtils.htmlEscape(replyText).replace("\n", "<br/>") + "</div>"
                 + "<div class='quote-box'>"
                 + "<div class='quote-title'>Your original inquiry:</div>"
-                + "<strong>Subject:</strong> " + message.getSubject() + "<br/>"
-                + "<strong>Message:</strong> " + message.getMessage()
+                + "<strong>Subject:</strong> " + HtmlUtils.htmlEscape(message.getSubject()) + "<br/>"
+                + "<strong>Message:</strong> " + HtmlUtils.htmlEscape(message.getMessage())
                 + "</div>"
                 + "<div class='footer'>This is a reply to your support inquiry submitted to ExamPrep Platform.</div>"
                 + "</div></body></html>";
 
         // Send email reply using the dynamic SMTP mail sender
         emailNotificationService.send(new NotificationPayload(
-                "RE: " + message.getSubject(),
+                "RE: " + withoutLineBreaks(message.getSubject()),
                 htmlContent,
                 NotificationType.CUSTOM,
                 Map.of("recipient", message.getEmail())
@@ -132,6 +133,11 @@ public class AdminContactController {
         contactMessageRepository.save(message);
 
         return ResponseEntity.ok(Map.of("message", "Reply email sent and message marked as read successfully."));
+    }
+
+    /** For values from a form on their way into a log line or a mail header. */
+    private static String withoutLineBreaks(String value) {
+        return value == null ? "" : value.replaceAll("[\\r\\n]+", " ");
     }
 
     @GetMapping("/statuses")
@@ -154,7 +160,7 @@ public class AdminContactController {
             throw new IllegalArgumentException("Status name or color is too long.");
         }
         
-        log.info("Creating new status '{}' with color '{}'", name, color);
+        log.info("Creating new status '{}' with color '{}'", withoutLineBreaks(name), withoutLineBreaks(color));
         ContactMessageStatusEntity status = ContactMessageStatusEntity.builder()
                 .name(name.trim())
                 .color(color.trim())

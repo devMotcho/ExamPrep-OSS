@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.Base64;
 
 /**
- * AES-256-GCM for provider API keys at rest. The key comes from the
+ * AES-256-GCM for provider API keys, and S3 and SMTP secrets entered in the settings, at rest. The key comes from the
  * AI_SETTINGS_ENCRYPTION_KEY environment variable (base64 of 32 bytes, e.g.
  * `openssl rand -base64 32`). Fails closed: without a valid key, secrets can
  * be neither stored nor read. The config key is bound as AAD so a ciphertext
@@ -35,7 +35,7 @@ public class AiSecretCipher {
     public AiSecretCipher(Environment env) {
         this.key = parseKey(env.getProperty("AI_SETTINGS_ENCRYPTION_KEY"));
         if (key == null) {
-            log.warn("AI_SETTINGS_ENCRYPTION_KEY is missing or invalid: AI generation stays unavailable.");
+            log.warn("AI_SETTINGS_ENCRYPTION_KEY is missing or invalid: AI generation stays unavailable and S3 or SMTP secrets entered in the settings are stored unencrypted.");
         }
     }
 
@@ -49,6 +49,10 @@ public class AiSecretCipher {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    public static boolean isEncrypted(String stored) {
+        return stored != null && stored.startsWith(PREFIX);
     }
 
     public boolean isAvailable() {

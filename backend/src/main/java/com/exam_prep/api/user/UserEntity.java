@@ -2,6 +2,7 @@ package com.exam_prep.api.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.DynamicUpdate;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 @Getter
 @Setter

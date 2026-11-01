@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.exam_prep.api.repository.SiteConfigRepository;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -19,33 +18,26 @@ public class EnvConfigSeeder implements CommandLineRunner {
 
     private final SiteConfigRepository siteConfigRepository;
     private final Environment env;
+    private final ServiceSettings serviceSettings;
+
+    /** Shown in the settings page, so they are copied. Secrets never are: see {@link ServiceSettings}. */
+    private static final Map<String, String> VISIBLE_SETTINGS = Map.ofEntries(
+            Map.entry("AWS_S3_REGION", "s3_region"),
+            Map.entry("AWS_S3_BUCKET", "s3_bucket"),
+            Map.entry("AWS_S3_ENDPOINT", "s3_endpoint"),
+            Map.entry("OAUTH_GOOGLE_ENABLED", "oauth_google_enabled"),
+            Map.entry("OAUTH_MICROSOFT_ENABLED", "oauth_microsoft_enabled"),
+            Map.entry("SMTP_HOST", "smtp_host"),
+            Map.entry("SMTP_PORT", "smtp_port"),
+            Map.entry("SMTP_USERNAME", "smtp_username"),
+            Map.entry("EMAIL_SENDER_NAME", "email_sender_name"));
 
     @Override
     @Transactional
     public void run(String... args) {
         log.info("Synchronizing environment variables with site_config...");
 
-        Map<String, String> propertyToConfigKeyMap = new HashMap<>();
-        
-        // AWS S3
-        propertyToConfigKeyMap.put("AWS_S3_ACCESS_KEY", "s3_access_key");
-        propertyToConfigKeyMap.put("AWS_S3_SECRET_KEY", "s3_secret_key");
-        propertyToConfigKeyMap.put("AWS_S3_REGION", "s3_region");
-        propertyToConfigKeyMap.put("AWS_S3_BUCKET", "s3_bucket");
-        propertyToConfigKeyMap.put("AWS_S3_ENDPOINT", "s3_endpoint");
-        
-        // OAuth
-        propertyToConfigKeyMap.put("OAUTH_GOOGLE_ENABLED", "oauth_google_enabled");
-        propertyToConfigKeyMap.put("OAUTH_MICROSOFT_ENABLED", "oauth_microsoft_enabled");
-        
-        // SMTP and Email Notifications
-        propertyToConfigKeyMap.put("SMTP_HOST", "smtp_host");
-        propertyToConfigKeyMap.put("SMTP_PORT", "smtp_port");
-        propertyToConfigKeyMap.put("SMTP_USERNAME", "smtp_username");
-        propertyToConfigKeyMap.put("SMTP_PASSWORD", "smtp_password");
-        propertyToConfigKeyMap.put("EMAIL_SENDER_NAME", "email_sender_name");
-
-        propertyToConfigKeyMap.forEach((property, configKey) -> {
+        VISIBLE_SETTINGS.forEach((property, configKey) -> {
             String envValue = env.getProperty(property);
             if (envValue != null && !envValue.trim().isEmpty()) {
                 siteConfigRepository.findById(configKey).ifPresent(config -> {
@@ -57,5 +49,18 @@ public class EnvConfigSeeder implements CommandLineRunner {
                 });
             }
         });
+
+        ServiceSettings.SECRET_KEYS.forEach(configKey -> siteConfigRepository.findById(configKey).ifPresent(config -> {
+            String stored = config.getValue();
+            if (stored == null || stored.isEmpty()) {
+                return;
+            }
+            String prepared = serviceSettings.isEnvManaged(configKey) ? "" : serviceSettings.prepareForStorage(configKey, stored);
+            if (!prepared.equals(stored)) {
+                log.info("{} is {} in the database.", configKey, prepared.isEmpty() ? "set in the environment, so it was cleared" : "now encrypted");
+                config.setValue(prepared);
+                siteConfigRepository.save(config);
+            }
+        }));
     }
 }

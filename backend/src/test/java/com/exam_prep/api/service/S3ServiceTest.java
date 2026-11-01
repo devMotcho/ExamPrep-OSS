@@ -22,7 +22,8 @@ class S3ServiceTest {
     private static final String UUID = "3f2b8c1e-7a4d-4e9b-9c11-0a1b2c3d4e5f";
 
     private final SiteConfigRepository repo = mock(SiteConfigRepository.class);
-    private final S3Service service = new S3Service(repo);
+    private final S3Service service = new S3Service(new com.exam_prep.api.config.ServiceSettings(
+            new org.springframework.mock.env.MockEnvironment(), repo, new com.exam_prep.api.aigen.AiSecretCipher(new org.springframework.mock.env.MockEnvironment())));
     private final Map<String, String> config = new HashMap<>(Map.of(
             "s3_access_key", "key", "s3_secret_key", "secret", "s3_region", "us-east-1", "s3_bucket", "mine"));
 

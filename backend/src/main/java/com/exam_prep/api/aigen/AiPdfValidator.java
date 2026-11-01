@@ -4,6 +4,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +21,8 @@ public class AiPdfValidator {
 
     static final long MAX_BYTES = 32L * 1024 * 1024;
     static final int MAX_PAGES = 100;
+    /** Matches the 3,000 input tokens per page that a generation reserves, so a job cannot cost more than it books. */
+    static final int MAX_TEXT_CHARS_PER_PAGE = 12_000;
     private static final byte[] MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
     /** Checks that need no parsing, run before the file is written to disk. */
@@ -43,6 +46,12 @@ public class AiPdfValidator {
         }
     }
 
+    static void checkTextSize(long characters, int pages) {
+        if (characters > (long) pages * MAX_TEXT_CHARS_PER_PAGE) {
+            throw new AiGenException(AiErrorCode.AI_TOO_MUCH_TEXT, HttpStatus.BAD_REQUEST);
+        }
+    }
+
     /** Returns the page count. */
     public int checkDocument(Path pdf) {
         try (PDDocument document = Loader.loadPDF(pdf.toFile(), "", IOUtils.createTempFileOnlyStreamCache())) {
@@ -56,6 +65,7 @@ public class AiPdfValidator {
             if (pages > MAX_PAGES) {
                 throw new AiGenException(AiErrorCode.AI_TOO_MANY_PAGES, HttpStatus.BAD_REQUEST);
             }
+            checkTextSize(new PDFTextStripper().getText(document).length(), pages);
             return pages;
         } catch (InvalidPasswordException e) {
             throw new AiGenException(AiErrorCode.AI_PDF_ENCRYPTED, HttpStatus.BAD_REQUEST);

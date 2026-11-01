@@ -52,7 +52,7 @@ public class ContactController {
         } catch (Exception e) {
             // Catch unexpected exceptions and return a generic message.
             // Log the stack trace only on the server. Never expose it to the client.
-            log.error("Unexpected error in contact endpoint for IP {}: {}", ipAddress, e.getMessage(), e);
+            log.error("Unexpected error in contact endpoint", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "An unexpected error occurred. Please try again later."));
         }

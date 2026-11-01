@@ -14,6 +14,7 @@ import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { PageSkeleton } from './components/ui/PageSkeleton';
 import { OfflineBanner } from './components/pwa/OfflineBanner';
 import { UpdatePrompt } from './components/pwa/UpdatePrompt';
+import { CONSENT_CHANGED_EVENT, consentedDeviceId } from './lib/telemetryConsent';
 import { initSentry } from './lib/config/sentry';
 
 initSentry();
@@ -30,11 +31,8 @@ const TelemetryTracker: React.FC = () => {
 
   useEffect(() => {
     const reportVisit = async () => {
-      let deviceId = localStorage.getItem('examprep_device_id');
-      if (!deviceId) {
-        deviceId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now();
-        localStorage.setItem('examprep_device_id', deviceId);
-      }
+      const deviceId = consentedDeviceId();
+      if (!deviceId) return;
       try {
         await authService.logVisit(deviceId);
       } catch (err) {
@@ -43,6 +41,8 @@ const TelemetryTracker: React.FC = () => {
     };
 
     reportVisit();
+    window.addEventListener(CONSENT_CHANGED_EVENT, reportVisit);
+    return () => window.removeEventListener(CONSENT_CHANGED_EVENT, reportVisit);
   }, [isAuthenticated]);
 
   return null;

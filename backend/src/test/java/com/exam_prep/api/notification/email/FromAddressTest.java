@@ -34,7 +34,9 @@ class FromAddressTest {
         SiteConfigRepository repo = mock(SiteConfigRepository.class);
         when(repo.findById(any())).thenReturn(Optional.empty());
         when(repo.findAllById(any())).thenReturn(List.of());
-        return new DynamicMailSenderFactory(sender, properties, repo).resolveFromAddress();
+        return new DynamicMailSenderFactory(sender, properties, repo, new com.exam_prep.api.config.ServiceSettings(
+                new org.springframework.mock.env.MockEnvironment(), repo,
+                new com.exam_prep.api.aigen.AiSecretCipher(new org.springframework.mock.env.MockEnvironment()))).resolveFromAddress();
     }
 
     @ParameterizedTest

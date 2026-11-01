@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import com.exam_prep.api.user.UserEntity;
@@ -52,6 +53,12 @@ public class TelemetryController {
         );
 
         return ResponseEntity.ok().build();
+    }
+
+    /** Visits are only counted for 90 days; after that a device is forgotten. */
+    @Scheduled(cron = "0 0 4 * * *", zone = "UTC")
+    public void deleteOldDevices() {
+        jdbcTemplate.update("DELETE FROM device_telemetry WHERE last_seen_at < CURRENT_TIMESTAMP - INTERVAL '90 days'");
     }
 
     @Data

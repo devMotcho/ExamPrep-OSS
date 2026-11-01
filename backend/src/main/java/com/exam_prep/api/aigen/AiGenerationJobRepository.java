@@ -27,10 +27,15 @@ public interface AiGenerationJobRepository extends JpaRepository<AiGenerationJob
 
     boolean existsByUserIdAndStatusIn(UUID userId, Collection<AiGenerationJobEntity.Status> statuses);
 
-    /** A failed generation does not use up the user's quota; its token cost still counts for the spend cap. */
-    long countByUserIdAndCreatedAtGreaterThanEqualAndStatusNot(UUID userId, ZonedDateTime since, AiGenerationJobEntity.Status status);
+    /** A failed generation only uses up quota when it cost something or may have: its reservation is still held. */
+    String COUNTS_TOWARD_QUOTA = "j.userId = :userId and j.createdAt >= :since and (j.status <> com.exam_prep.api.aigen.AiGenerationJobEntity$Status.FAILED "
+            + "or j.costUsd > 0 or j.reservedUsd > 0)";
 
-    Optional<AiGenerationJobEntity> findFirstByUserIdAndCreatedAtGreaterThanEqualAndStatusNotOrderByCreatedAtAsc(UUID userId, ZonedDateTime since, AiGenerationJobEntity.Status status);
+    @Query("select count(j) from AiGenerationJobEntity j where " + COUNTS_TOWARD_QUOTA)
+    long countTowardQuota(@Param("userId") UUID userId, @Param("since") ZonedDateTime since);
+
+    @Query("select min(j.createdAt) from AiGenerationJobEntity j where " + COUNTS_TOWARD_QUOTA)
+    Optional<ZonedDateTime> oldestTowardQuota(@Param("userId") UUID userId, @Param("since") ZonedDateTime since);
 
     @Query("select coalesce(sum(j.costUsd + j.reservedUsd), 0) from AiGenerationJobEntity j where j.lastAttemptAt >= :since")
     BigDecimal sumSpendSince(@Param("since") ZonedDateTime since);

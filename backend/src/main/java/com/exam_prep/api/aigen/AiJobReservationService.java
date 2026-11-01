@@ -65,6 +65,10 @@ public class AiJobReservationService {
         job.setProvider(settings.provider());
         job.setModel(settings.model());
         job.setPageCount(pageCount);
+        // A retry: what an earlier attempt may have cost stays counted when the new reservation replaces it.
+        if (job.getReservedUsd() != null) {
+            job.setCostUsd(job.getCostUsd().add(job.getReservedUsd()));
+        }
         job.setReservedUsd(reservation);
         job.setLastAttemptAt(now);
         return jobs.save(job);
@@ -72,14 +76,13 @@ public class AiJobReservationService {
 
     public long usedQuota(UUID userId) {
         ZonedDateTime since = ZonedDateTime.now().minusDays(WINDOW_DAYS);
-        return jobs.countByUserIdAndCreatedAtGreaterThanEqualAndStatusNot(userId, since, Status.FAILED);
+        return jobs.countTowardQuota(userId, since);
     }
 
     /** When the oldest counted generation leaves the window and frees one use; null if nothing is counted. */
     public ZonedDateTime nextAvailableAt(UUID userId) {
-        return jobs.findFirstByUserIdAndCreatedAtGreaterThanEqualAndStatusNotOrderByCreatedAtAsc(
-                        userId, ZonedDateTime.now().minusDays(WINDOW_DAYS), Status.FAILED)
-                .map(job -> job.getCreatedAt().plusDays(WINDOW_DAYS))
+        return jobs.oldestTowardQuota(userId, ZonedDateTime.now().minusDays(WINDOW_DAYS))
+                .map(createdAt -> createdAt.plusDays(WINDOW_DAYS))
                 .orElse(null);
     }
 

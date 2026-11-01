@@ -1,5 +1,6 @@
 package com.exam_prep.api.notification.email;
 
+import com.exam_prep.api.config.ServiceSettings;
 import com.exam_prep.api.config.SiteConfigKey;
 import com.exam_prep.api.entity.SiteConfigEntity;
 import com.exam_prep.api.notification.NotificationProperties;
@@ -15,11 +16,11 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 /**
  * Builds the {@link JavaMailSender} used for outbound email, honoring an optional
@@ -41,6 +42,7 @@ class DynamicMailSenderFactory {
     private final JavaMailSender fallbackMailSender;
     private final NotificationProperties properties;
     private final SiteConfigRepository siteConfigRepository;
+    private final ServiceSettings serviceSettings;
 
     @Cacheable("smtpMailSender")
     JavaMailSender getMailSender() {
@@ -132,15 +134,14 @@ class DynamicMailSenderFactory {
     }
 
     private Map<String, String> loadSmtpConfig() {
-        List<String> keys = List.of(
-                SiteConfigKey.SMTP_HOST.key(),
-                SiteConfigKey.SMTP_PORT.key(),
-                SiteConfigKey.SMTP_USERNAME.key(),
-                SiteConfigKey.SMTP_PASSWORD.key()
-        );
-
-        return siteConfigRepository.findAllById(keys).stream()
-                .collect(Collectors.toMap(SiteConfigEntity::getKey, SiteConfigEntity::getValue));
+        Map<String, String> config = new HashMap<>();
+        for (SiteConfigKey key : List.of(SiteConfigKey.SMTP_HOST, SiteConfigKey.SMTP_PORT, SiteConfigKey.SMTP_USERNAME, SiteConfigKey.SMTP_PASSWORD)) {
+            String value = serviceSettings.resolve(key.key());
+            if (value != null) {
+                config.put(key.key(), value);
+            }
+        }
+        return config;
     }
 
     private int parsePort(String port) {

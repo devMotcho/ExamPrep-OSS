@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.exam_prep.api.aigen.AiGenException;
 import com.exam_prep.api.aigen.AiSettingsService;
+import com.exam_prep.api.config.ServiceSettings;
 import com.exam_prep.api.entity.SiteConfigEntity;
 import com.exam_prep.api.repository.SiteConfigRepository;
 import com.exam_prep.api.service.S3Service;
@@ -26,6 +27,7 @@ public class SiteConfigController {
     private final SiteConfigRepository siteConfigRepository;
     private final S3Service s3Service;
     private final AiSettingsService aiSettingsService;
+    private final ServiceSettings serviceSettings;
 
     /** Sent to the client instead of a stored secret; receiving it back means "leave unchanged". */
     private static final String SECRET_MASK = "********";
@@ -67,6 +69,15 @@ public class SiteConfigController {
                 .collect(Collectors.toList()));
     }
 
+    /** What the settings page tells administrators about how S3 and SMTP credentials are kept. */
+    @GetMapping("/secret-storage")
+    @PreAuthorize("hasAnyRole('ADMIN','DEV')")
+    public ResponseEntity<Map<String, Object>> getSecretStorage() {
+        return ResponseEntity.ok(Map.of(
+                "encryptionAvailable", serviceSettings.isEncryptionAvailable(),
+                "envManaged", serviceSettings.envManagedSecrets()));
+    }
+
     @PutMapping("/{key}")
     @PreAuthorize("hasAnyRole('ADMIN','DEV')")
     @CacheEvict(value = "siteConfigPublic", allEntries = true)
@@ -97,7 +108,10 @@ public class SiteConfigController {
         if (incoming == null || (isSecret(entity) && SECRET_MASK.equals(incoming))) {
             return;
         }
-        entity.setValue(aiSettingsService.prepareForStorage(entity.getKey(), incoming));
+        if (isSecret(entity) && serviceSettings.isEnvManaged(entity.getKey())) {
+            return; // The environment wins; storing a second copy would only mislead.
+        }
+        entity.setValue(serviceSettings.prepareForStorage(entity.getKey(), aiSettingsService.prepareForStorage(entity.getKey(), incoming)));
     }
 
     private static boolean isSecret(SiteConfigEntity entity) {

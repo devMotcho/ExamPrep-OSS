@@ -13,6 +13,7 @@ public enum AiErrorCode {
     AI_FILE_NOT_PDF("The file is not a valid PDF."),
     AI_FILE_TOO_LARGE("The PDF exceeds the 32 MB limit."),
     AI_TOO_MANY_PAGES("The PDF exceeds the 100 page limit."),
+    AI_TOO_MUCH_TEXT("The PDF contains too much text. Try a shorter document."),
     AI_PDF_ENCRYPTED("The PDF is password-protected. Remove the password and try again."),
     AI_QUOTA_EXCEEDED("You have reached your AI generation limit for this period."),
     AI_SPEND_CAP_REACHED("AI generation is paused until the start of next month. This attempt did not use any of your generations."),

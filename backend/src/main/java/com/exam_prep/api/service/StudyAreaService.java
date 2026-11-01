@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -202,7 +204,7 @@ public class StudyAreaService {
         QuestionEntity question = QuestionEntity.builder()
                 .studyArea(studyArea)
                 .prompt(RichTextSanitizer.richText(questionDto.getPrompt()))
-                .imageUrl(questionDto.getImageUrl())
+                .imageUrl(requireSafeImageUrl(questionDto.getImageUrl()))
                 .explanation(RichTextSanitizer.richText(questionDto.getExplanation()))
                 .chapter(chapter)
                 .createdBy(user)
@@ -272,7 +274,7 @@ public class StudyAreaService {
         }
 
         question.setPrompt(RichTextSanitizer.richText(questionDto.getPrompt()));
-        question.setImageUrl(questionDto.getImageUrl());
+        question.setImageUrl(requireSafeImageUrl(questionDto.getImageUrl()));
         question.setExplanation(RichTextSanitizer.richText(questionDto.getExplanation()));
         question.setChapter(chapter);
 
@@ -477,6 +479,27 @@ public class StudyAreaService {
                 importedQuestions.add(addQuestion(studyAreaId, qDto, user));
             }
             return importedQuestions;
+    }
+
+    /** An image shown to other students is one of this app's own uploads, or at least served over https. */
+    private String requireSafeImageUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String trimmed = url.trim();
+        if (isHttpsUrl(trimmed) || s3Service.isOwnObjectUrl(trimmed)) {
+            return trimmed;
+        }
+        throw new AppException("The image address must use https.", HttpStatus.BAD_REQUEST);
+    }
+
+    private static boolean isHttpsUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null;
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     private void validateQuestionDto(QuestionDto dto) {

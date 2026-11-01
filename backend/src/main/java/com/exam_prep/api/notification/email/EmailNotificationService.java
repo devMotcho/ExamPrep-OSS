@@ -117,9 +117,9 @@ public class EmailNotificationService implements NotificationService {
 
                 mailSender.send(message);
                 successCount++;
-                log.info("Successfully dispatched email notification to {}", toEmail);
+                log.info("Dispatched an email notification");
             } catch (Exception e) {
-                log.error("Failed to send email notification to {}: {}", toEmail, e.getMessage(), e);
+                log.error("Failed to send an email notification: {}", e.getClass().getSimpleName());
                 failures.put(toEmail, e.getMessage());
             }
         }

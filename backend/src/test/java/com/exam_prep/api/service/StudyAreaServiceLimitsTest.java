@@ -109,4 +109,19 @@ class StudyAreaServiceLimitsTest {
         assertEquals(StudyAreaService.MAX_PAGE_SIZE, StudyAreaService.clampPageSize(10_000));
         assertEquals(1, StudyAreaService.clampPageSize(0));
     }
+
+    @Test
+    void imageAddressesMustBeHttpsOrOurOwn() {
+        S3Service s3 = mock(S3Service.class);
+        StudyAreaService withS3 = new StudyAreaService(areas, mock(QuestionRepository.class), mock(OptionRepository.class),
+                mock(UserStudyAreaRepository.class), mock(ChapterRepository.class), s3, users);
+        when(s3.isOwnObjectUrl("http://minio:9000/bucket/gallery/x.png")).thenReturn(true);
+
+        assertEquals("https://e.test/a.png", ReflectionTestUtils.invokeMethod(withS3, "requireSafeImageUrl", "https://e.test/a.png"));
+        assertEquals("http://minio:9000/bucket/gallery/x.png", ReflectionTestUtils.invokeMethod(withS3, "requireSafeImageUrl", "http://minio:9000/bucket/gallery/x.png"));
+        assertNull(ReflectionTestUtils.invokeMethod(withS3, "requireSafeImageUrl", " "));
+        for (String bad : List.of("http://e.test/a.png", "javascript:alert(1)", "data:image/png;base64,AAAA", "//e.test/a.png", "https://u:p@e.test/a.png")) {
+            assertThrows(AppException.class, () -> ReflectionTestUtils.invokeMethod(withS3, "requireSafeImageUrl", bad), bad);
+        }
+    }
 }

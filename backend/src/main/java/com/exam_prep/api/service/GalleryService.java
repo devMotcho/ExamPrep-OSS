@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.exam_prep.api.dto.ContentLimits;
 import com.exam_prep.api.dto.GalleryImageDto;
 import com.exam_prep.api.entity.GalleryImageEntity;
 import com.exam_prep.api.exception.AppException;
@@ -22,9 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class GalleryService {
-
-    /** Excludes SVG, which can carry scripts. */
-    private static final java.util.Set<String> ALLOWED_IMAGE_TYPES = java.util.Set.of("image/png", "image/jpeg", "image/webp", "image/gif");
 
     private final GalleryImageRepository galleryImageRepository;
     private final S3Service s3Service;
@@ -42,20 +40,29 @@ public class GalleryService {
         if (user == null) {
             throw new AppException("Unauthorized", HttpStatus.UNAUTHORIZED);
         }
-        if (file.getContentType() == null || !ALLOWED_IMAGE_TYPES.contains(file.getContentType().toLowerCase(java.util.Locale.ROOT))) {
-            throw new AppException("Only PNG, JPEG, WebP and GIF images can be uploaded.", HttpStatus.BAD_REQUEST);
-        }
-        String s3Key = s3Service.uploadFile(file);
+        // The bytes decide, not the declared type or name. This excludes SVG, which can carry scripts.
+        MediaTypes.Detected type = MediaTypes.detect(file).filter(MediaTypes.Detected::isImage)
+                .orElseThrow(() -> new AppException("Only PNG, JPEG, WebP and GIF images can be uploaded.", HttpStatus.BAD_REQUEST));
+        String s3Key = s3Service.uploadImage(file, type);
 
         GalleryImageEntity entity = GalleryImageEntity.builder()
-                .filename(file.getOriginalFilename() != null ? file.getOriginalFilename() : "unnamed")
+                .filename(displayName(file.getOriginalFilename()))
                 .s3Key(s3Key)
                 .uploadedBy(user)
-                .folder(folder)
+                .folder(folder == null || folder.length() <= ContentLimits.FOLDER ? folder : folder.substring(0, ContentLimits.FOLDER))
                 .build();
 
         entity = galleryImageRepository.save(entity);
         return mapToDto(entity);
+    }
+
+    private static String displayName(String original) {
+        if (original == null || original.isBlank()) {
+            return "unnamed";
+        }
+        String base = original.replace('\\', '/');
+        base = base.substring(base.lastIndexOf('/') + 1).replaceAll("\\p{Cntrl}", "");
+        return base.length() > ContentLimits.FILENAME ? base.substring(base.length() - ContentLimits.FILENAME) : base;
     }
 
     @Transactional

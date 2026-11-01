@@ -25,7 +25,9 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -48,6 +50,12 @@ public class AiGenerationWorker {
     private static final long STALE_MINUTES = 30;
     private static final long UNREVIEWED_RETENTION_DAYS = 30;
     private static final long TYPICAL_OUTPUT_CHARS = 14_000;
+
+    /** Failures where the provider cannot have charged for anything. After any other, the cost is unknown. */
+    private static final Set<AiErrorCode> NOTHING_BILLED = EnumSet.of(
+            AiErrorCode.AI_BUSY, AiErrorCode.AI_NOT_CONFIGURED, AiErrorCode.AI_ENCRYPTION_UNAVAILABLE, AiErrorCode.AI_KEY_UNREADABLE,
+            AiErrorCode.AI_PROVIDER_AUTH, AiErrorCode.AI_PROVIDER_PERMISSION, AiErrorCode.AI_PROVIDER_MODEL_NOT_FOUND,
+            AiErrorCode.AI_PROVIDER_RATE_LIMIT, AiErrorCode.AI_PROVIDER_BAD_REQUEST);
 
     private final AiGenerationJobRepository jobs;
     private final AiSettingsService settingsService;
@@ -158,18 +166,25 @@ public class AiGenerationWorker {
             job.setStatus(Status.READY);
             job.setProgress(100);
             job.setResultJson(json);
-        });
+        }, false);
     }
 
-    /** Provider exceptions report no usage, so such an attempt records no cost and releases its reservation. */
+    /**
+     * Provider exceptions report no usage. When the failure leaves open whether the provider did the work (a
+     * timeout, say), the reservation stays as spend, as the true cost may appear on the bill anyway.
+     */
     private void finishFailed(UUID jobId, AiErrorCode code, long in, long out) {
         update(jobId, in, out, job -> {
             job.setStatus(Status.FAILED);
             job.setErrorCode(code.name());
-        });
+        }, keepsReservation(code, in, out));
     }
 
-    private void update(UUID jobId, long in, long out, java.util.function.Consumer<AiGenerationJobEntity> change) {
+    static boolean keepsReservation(AiErrorCode code, long in, long out) {
+        return in + out == 0 && !NOTHING_BILLED.contains(code);
+    }
+
+    private void update(UUID jobId, long in, long out, java.util.function.Consumer<AiGenerationJobEntity> change, boolean keepReservation) {
         jobs.findById(jobId).ifPresent(job -> {
             if (job.getStatus() != Status.PROCESSING && job.getStatus() != Status.QUEUED) {
                 return; // already closed by the stale-job sweep
@@ -182,7 +197,9 @@ public class AiGenerationWorker {
                     .map(p -> AiJobReservationService.cost(p, in, out))
                     .orElse(BigDecimal.ZERO);
             job.setCostUsd(job.getCostUsd().add(attemptCost));
-            job.setReservedUsd(BigDecimal.ZERO);
+            if (!keepReservation) {
+                job.setReservedUsd(BigDecimal.ZERO);
+            }
             jobs.save(job);
         });
     }
@@ -206,10 +223,13 @@ public class AiGenerationWorker {
         cleanTempFiles(Instant.now().minus(STALE_MINUTES + 10, ChronoUnit.MINUTES));
     }
 
+    /** Only a job still in the queue never reached the provider. */
     private void interrupt(AiGenerationJobEntity job) {
+        if (job.getStatus() == Status.QUEUED) {
+            job.setReservedUsd(BigDecimal.ZERO);
+        }
         job.setStatus(Status.FAILED);
         job.setErrorCode(AiErrorCode.AI_INTERRUPTED.name());
-        job.setReservedUsd(BigDecimal.ZERO);
         jobs.save(job);
     }
 

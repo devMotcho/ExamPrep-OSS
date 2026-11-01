@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { readConsent, saveConsent, type ConsentChoice } from '@/lib/telemetryConsent';
 
 export const CookieConsent: React.FC = () => {
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('cookie_consent');
-    if (!consent) {
+    if (!readConsent()) {
       setIsVisible(true);
     }
   }, []);
 
-  const handleAcceptEssential = () => {
-    localStorage.setItem('cookie_consent', 'essential');
+  const choose = (choice: ConsentChoice) => {
+    saveConsent(choice);
     setIsVisible(false);
   };
 
@@ -29,16 +29,22 @@ export const CookieConsent: React.FC = () => {
             </h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-            {t('cookies.description', 'We use session cookies to keep you signed in, plus a device identifier stored in your browser to count visits. Nothing is used for advertising or shared with ad networks.')}
+            {t('cookies.description', 'We use session cookies to keep you signed in. With your permission, we also store a device identifier in your browser to count visits, and forget it after 90 days without a visit. Nothing is used for advertising or shared with ad networks.')}
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto">
           <button
-            onClick={handleAcceptEssential}
+            onClick={() => choose('essential')}
+            className="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-bold border border-border bg-card hover:bg-muted text-foreground transition-all duration-300 whitespace-nowrap"
+          >
+            {t('cookies.essentialOnly', 'Essential only')}
+          </button>
+          <button
+            onClick={() => choose('visits')}
             className="w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all duration-300 whitespace-nowrap"
           >
-            {t('cookies.acknowledge', 'Got it')}
+            {t('cookies.allowVisits', 'Allow visit counting')}
           </button>
         </div>
       </div>

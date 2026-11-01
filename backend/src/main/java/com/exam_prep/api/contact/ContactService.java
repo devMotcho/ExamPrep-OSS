@@ -55,7 +55,7 @@ public class ContactService {
             .orElse(true);
 
         if (!isEnabled) {
-            log.warn("Contact form submission blocked because contact_enabled is false for IP: {}", ipAddress);
+            log.warn("Contact form submission blocked because contact_enabled is false");
             throw new AppException("The contact feature is currently disabled.", HttpStatus.FORBIDDEN);
         }
 
@@ -68,13 +68,12 @@ public class ContactService {
         checkRateLimit(ipAddress);
 
         // 2. Input Sanitization to prevent XSS/log injection and restrict message length
-        String cleanName = sanitize(request.getName(), 100);
-        String cleanEmail = sanitize(request.getEmail(), 100);
-        String cleanSubject = sanitize(request.getSubject(), 150);
+        String cleanName = sanitize(request.getName(), 100).replaceAll("[\\r\\n]+", " ");
+        String cleanEmail = sanitize(request.getEmail(), 100).replaceAll("[\\r\\n]+", "");
+        String cleanSubject = sanitize(request.getSubject(), 150).replaceAll("[\\r\\n]+", " ");
         String cleanMessage = sanitize(request.getMessage(), 4000);
 
-        log.info("Processing contact submission from IP: {}", ipAddress);
-
+        
         // 3. Save to database first to generate UUID
         ContactMessageEntity messageEntity = ContactMessageEntity.builder()
             .name(cleanName)
@@ -86,7 +85,7 @@ public class ContactService {
             .type("CONTACT")
             .build();
         messageEntity = contactMessageRepository.save(messageEntity);
-        log.info("Saved contact message submission from name: {}, email: {} with ID: {}", cleanName, cleanEmail, messageEntity.getId());
+        log.info("Saved contact message {}", messageEntity.getId());
 
         // 4. Construct payload (with message ID in metadata) and dispatch asynchronously
         String body = String.format("Name: %s\nEmail: %s\n\nMessage:\n%s", cleanName, cleanEmail, cleanMessage);
@@ -124,7 +123,7 @@ public class ContactService {
 
         // Maximum 3 attempts in 1 hour. The 4th attempt will trigger the exception.
         if (attempts.size() > 3) {
-            log.warn("Rate limit exceeded for IP: {} at {}", ipAddress, now);
+            log.warn("Contact form rate limit exceeded");
             throw new AppException("Too many requests. Please try again later.", HttpStatus.TOO_MANY_REQUESTS);
         }
     }
