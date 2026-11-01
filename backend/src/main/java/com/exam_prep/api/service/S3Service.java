@@ -10,7 +10,9 @@ import com.exam_prep.api.config.ServiceSettings;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.http.ContentStreamProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.utils.IoUtils;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
@@ -23,6 +25,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.UUID;
@@ -91,7 +95,12 @@ public class S3Service {
                 ));
         URI endpoint = customEndpoint();
         if (endpoint != null) {
-            builder.endpointOverride(endpoint).forcePathStyle(true);
+            // Cloudflare R2 refuses the signature of a chunked upload with a 403.
+            builder.endpointOverride(endpoint)
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .chunkedEncodingEnabled(false)
+                            .build());
         }
         return builder.build();
     }
@@ -123,6 +132,18 @@ public class S3Service {
             throw new IllegalStateException("S3 is not fully configured in settings.");
         }
 
+        // The SDK reads the body to sign it, again to send it, and again on a retry: each read needs a fresh stream.
+        InputStream[] current = new InputStream[1];
+        ContentStreamProvider source = () -> {
+            IoUtils.closeQuietly(current[0], log);
+            try {
+                current[0] = file.getInputStream();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            return current[0];
+        };
+
         try (S3Client s3Client = buildS3Client()) {
             PutObjectRequest putOb = PutObjectRequest.builder()
                     .bucket(getConfigValue("s3_bucket"))
@@ -130,7 +151,9 @@ public class S3Service {
                     .contentType(contentType)
                     .build();
 
-            s3Client.putObject(putOb, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            s3Client.putObject(putOb, RequestBody.fromContentProvider(source, file.getSize(), contentType));
+        } finally {
+            IoUtils.closeQuietly(current[0], log);
         }
     }
 

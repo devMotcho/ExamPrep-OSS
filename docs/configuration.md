@@ -33,11 +33,11 @@ Needed for password reset, reminders and contact replies.
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | empty | |
 | `CONFIRMATION_CODE_SENDS_PER_HOUR` | `5` | Codes one address can receive per hour, 0 turns it off |
 | `SMTP_FROM` | `SMTP_USERNAME` | If neither is a valid address, email stays off and the log says why |
+| `EMAIL_SENDER_NAME` | `ExamPrep` | |
 
 Port 465 uses TLS from the start. Other ports use STARTTLS, which is required on 25, 587 and 2525 and whenever a username is set; only a server without credentials on another port, such as a local mail catcher, may do without it. The server's certificate has to match its name.
 
 Changing the SMTP host or username in the settings clears a stored SMTP password, so enter it again in the same save or afterwards. If any of the host, username or password is in the environment, the settings page refuses changes to the host and username: change them in the environment. The S3 endpoint works the same way with `AWS_S3_ENDPOINT` and `AWS_S3_SECRET_KEY`.
-| `EMAIL_SENDER_NAME` | `ExamPrep` | |
 
 ## Image storage
 
@@ -48,6 +48,24 @@ Any S3-compatible service. Without it, uploads return 503 and everything else wo
 | `AWS_S3_ACCESS_KEY`, `AWS_S3_SECRET_KEY`, `AWS_S3_REGION`, `AWS_S3_BUCKET` | |
 | `AWS_S3_ENDPOINT` | Set this for MinIO, R2 and others |
 | `AWS_S3_PUBLIC_ENDPOINT` | The address browsers use, if different from `AWS_S3_ENDPOINT` |
+
+### Cloudflare R2
+
+```bash
+AWS_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+AWS_S3_REGION=auto
+AWS_S3_BUCKET=<bucket>
+AWS_S3_ACCESS_KEY=<access key id>
+AWS_S3_SECRET_KEY=<secret access key>
+```
+
+1. Create the bucket and leave public access off. Images are served through signed links that last an hour.
+2. Create an R2 API token with **Object Read & Write**, scoped to that bucket only. Its access key ID and secret access key go in the two variables above.
+3. Restart with `docker compose up -d`, then upload an image in the gallery.
+
+Leave `AWS_S3_PUBLIC_ENDPOINT` empty: signed links only work on the `r2.cloudflarestorage.com` address, not on a custom domain. `CSP_EXTRA_MEDIA_SOURCES` isn't needed either, because the Content-Security-Policy already allows images from any `https:` address. The browser loads them as plain images, so the bucket needs no CORS rule.
+
+For R2, uploads to a custom endpoint aren't chunked and don't send optional checksums. Upload, signed fetch and delete are tested against MinIO. They haven't been run against R2 itself: this section follows Cloudflare's documentation for the AWS SDK for Java. If you try it and something differs, please open an issue.
 
 ## Request size
 

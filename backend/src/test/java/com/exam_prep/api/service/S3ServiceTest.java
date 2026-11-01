@@ -1,6 +1,7 @@
 package com.exam_prep.api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -104,5 +105,55 @@ class S3ServiceTest {
     void customEndpointStillRequiresOwnBucketKeyAndServer(String url) {
         useMinio();
         assertEquals(url, service.refreshPresignedUrlIfNeeded(url));
+    }
+
+    /**
+     * What Cloudflare R2 can reject on a custom endpoint. Its guide for this SDK turns off chunked uploads, whose
+     * signature R2 refuses with a 403. SDK 2.30 and later also add a CRC32 checksum by default: a version bump that
+     * makes this test fail must set requestChecksumCalculation(WHEN_REQUIRED) on the client.
+     */
+    @Test
+    void uploadsToACustomEndpointAreNotChunkedAndSendNoOptionalChecksum() throws Exception {
+        Map<String, java.util.List<String>> headers = new HashMap<>();
+        java.util.concurrent.atomic.AtomicReference<byte[]> received = new java.util.concurrent.atomic.AtomicReference<>();
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+                new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            exchange.getRequestHeaders().forEach((name, values) -> headers.put(name.toLowerCase(java.util.Locale.ROOT), values));
+            received.set(exchange.getRequestBody().readAllBytes());
+            exchange.getResponseHeaders().add("ETag", "\"5289df737df57326fcdd22597afb1fac\"");
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            config.put("s3_region", "auto");
+            config.put("s3_endpoint", "http://127.0.0.1:" + server.getAddress().getPort());
+            useConfig();
+
+            // A stream that can't be rewound, like the temporary file behind a real upload.
+            service.uploadFile(new org.springframework.mock.web.MockMultipartFile("file", new byte[] {1, 2, 3}) {
+                        @Override
+                        public java.io.InputStream getInputStream() throws java.io.IOException {
+                            return new java.io.BufferedInputStream(super.getInputStream()) {
+                                @Override
+                                public boolean markSupported() {
+                                    return false;
+                                }
+                            };
+                        }
+                    },
+                    "gallery/" + UUID + ".png", "image/png");
+        } finally {
+            server.stop(0);
+        }
+
+        assertTrue(headers.containsKey("authorization"), "the upload reached the server");
+        assertTrue(java.util.Arrays.equals(new byte[] {1, 2, 3}, received.get()), "the whole file arrived");
+        assertTrue(headers.get("authorization").get(0).contains("/auto/s3/aws4_request"), "signed for the region");
+        assertTrue(headers.keySet().stream().noneMatch(name -> name.startsWith("x-amz-checksum-")
+                || name.equals("x-amz-sdk-checksum-algorithm") || name.equals("x-amz-trailer")), headers.keySet().toString());
+        assertFalse(headers.get("x-amz-content-sha256").get(0).startsWith("STREAMING-"), "not chunked");
+        assertFalse(headers.containsKey("content-encoding"), "not aws-chunked");
     }
 }
