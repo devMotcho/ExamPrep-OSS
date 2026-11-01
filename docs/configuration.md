@@ -65,7 +65,7 @@ AWS_S3_SECRET_KEY=<secret access key>
 
 Leave `AWS_S3_PUBLIC_ENDPOINT` empty: signed links only work on the `r2.cloudflarestorage.com` address, not on a custom domain. `CSP_EXTRA_MEDIA_SOURCES` isn't needed either, because the Content-Security-Policy already allows images from any `https:` address. The browser loads them as plain images, so the bucket needs no CORS rule.
 
-For R2, uploads to a custom endpoint aren't chunked and don't send optional checksums. Upload, signed fetch and delete are tested against MinIO. They haven't been run against R2 itself: this section follows Cloudflare's documentation for the AWS SDK for Java. If you try it and something differs, please open an issue.
+For R2, uploads to a custom endpoint aren't chunked and don't send optional checksums. Upload, signed fetch and delete are tested against MinIO. This setup has also been used with a real R2 bucket for uploading and serving images. If something differs for you, please open an issue.
 
 ## Request size
 
