@@ -17,6 +17,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -161,13 +162,13 @@ public class AdminDashboardController {
                 .totalUsers(totalUsers)
                 .newUsers7Days(newUsers7Days)
                 .newUsers30Days(newUsers30Days)
-                .newUsers7DaysGrowth(newUsers7DaysGrowth > 0 ? Double.parseDouble(String.format("%.1f", newUsers7DaysGrowth)) : newUsers7DaysGrowth < 0 ? Double.parseDouble(String.format("%.1f", newUsers7DaysGrowth)) : 0.0)
-                .newUsers30DaysGrowth(newUsers30DaysGrowth > 0 ? Double.parseDouble(String.format("%.1f", newUsers30DaysGrowth)) : newUsers30DaysGrowth < 0 ? Double.parseDouble(String.format("%.1f", newUsers30DaysGrowth)) : 0.0)
+                .newUsers7DaysGrowth(oneDecimal(newUsers7DaysGrowth))
+                .newUsers30DaysGrowth(oneDecimal(newUsers30DaysGrowth))
                 .activeUsers(activeUsers)
                 .totalMessages(totalMessages)
                 .unreadMessages(unreadMessages)
-                .usersGrowthPercentage(usersGrowth > 0 ? Double.parseDouble(String.format("%.1f", usersGrowth)) : 0.0)
-                .messagesGrowthPercentage(messagesGrowth > 0 ? Double.parseDouble(String.format("%.1f", messagesGrowth)) : 0.0)
+                .usersGrowthPercentage(oneDecimal(usersGrowth))
+                .messagesGrowthPercentage(oneDecimal(messagesGrowth))
                 .totalQueries(totalQueries)
                 .emailChannelActive(emailChannelActive)
                 .registrationOpen(registrationOpen)
@@ -188,5 +189,10 @@ public class AdminDashboardController {
     private boolean isSameDay(ZonedDateTime t1, ZonedDateTime t2) {
         if (t1 == null || t2 == null) return false;
         return t1.getYear() == t2.getYear() && t1.getDayOfYear() == t2.getDayOfYear();
+    }
+
+    /** Locale.ROOT because parseDouble only reads a dot: under a locale with a decimal comma this would throw. */
+    private static double oneDecimal(double value) {
+        return Double.parseDouble(String.format(Locale.ROOT, "%.1f", value));
     }
 }
