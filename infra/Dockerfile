@@ -1,5 +1,5 @@
 # Build the web app
-FROM node:22-alpine AS frontend-builder
+FROM node:26-alpine AS frontend-builder
 WORKDIR /app
 
 # Same-origin by default: nginx below proxies /api to the backend.
