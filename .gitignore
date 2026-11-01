@@ -1,0 +1,33 @@
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.iml
+*.iws
+*.ipr
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.AppleDouble
+.LSOverride
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+
+# Local session cookies (curl)
+cookies*.txt
+
+.claude/

@@ -1,0 +1,143 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: examprep_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    networks:
+      - examprep_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: examprep_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?set PGADMIN_DEFAULT_PASSWORD in .env}
+      PGADMIN_SERVER_JSON_FILE: /tmp/servers.json
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "db:5432:*:$${POSTGRES_USER}:$${POSTGRES_PASSWORD}" > /tmp/pgpass
+        chmod 600 /tmp/pgpass
+        cat <<EOF > /tmp/servers.json
+        {
+          "Servers": {
+            "1": {
+              "Name": "ExamPrep DB",
+              "Group": "Servers",
+              "Host": "db",
+              "Port": 5432,
+              "MaintenanceDB": "$${POSTGRES_DB}",
+              "Username": "$${POSTGRES_USER}",
+              "PassFile": "/tmp/pgpass",
+              "SSLMode": "prefer"
+            }
+          }
+        }
+        EOF
+        exec /entrypoint.sh "$$@"
+    depends_on:
+      - db
+    networks:
+      - examprep_network
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: examprep_backend
+    environment:
+      # --- Spring & Database Configuration ---
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # --- JWT Authentication Security ---
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRATION_MS: ${JWT_ACCESS_EXPIRATION_MS}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS}
+
+      # --- CORS & Application URLs ---
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      FRONTEND_URL: ${FRONTEND_URL}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080/api}
+
+      # --- Initial Admin User Seeding ---
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
+
+      # --- Initial Developer User Seeding ---
+      DEFAULT_DEV_EMAIL: ${DEFAULT_DEV_EMAIL:-}
+      DEFAULT_DEV_PASSWORD: ${DEFAULT_DEV_PASSWORD:-}
+
+      # --- SMTP & Email Notification Settings ---
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_SENDER_NAME: ${EMAIL_SENDER_NAME:-ExamPrep Platform}
+
+      # --- AWS S3 Storage Configuration ---
+      AWS_S3_ACCESS_KEY: ${AWS_S3_ACCESS_KEY:-}
+      AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY:-}
+      AWS_S3_REGION: ${AWS_S3_REGION:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+
+      # --- Social Login (OAuth2) Configuration ---
+      OAUTH_GOOGLE_ENABLED: ${OAUTH_GOOGLE_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-disabled}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-disabled}
+      OAUTH_MICROSOFT_ENABLED: ${OAUTH_MICROSOFT_ENABLED:-false}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-disabled}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-disabled}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+
+      # --- AI question generation: encrypts provider API keys at rest ---
+      AI_SETTINGS_ENCRYPTION_KEY: ${AI_SETTINGS_ENCRYPTION_KEY:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - ~/.m2:/root/.m2
+    depends_on:
+      - db
+    networks:
+      - examprep_network
+
+  frontend:
+    image: node:22-alpine
+    container_name: examprep_frontend
+    working_dir: /app
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm run dev -- --host"
+    networks:
+      - examprep_network
+
+volumes:
+  pgdata_dev:
+  pgadmin_data:
+
+networks:
+  examprep_network:
+    driver: bridge

@@ -1,0 +1,57 @@
+### Personal ###
+todo.md
+
+### Java ###
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+
+### Package Files ###
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+### Build tools ###
+target/
+build/
+bin/
+logs/
+log/
+
+# IMPORTANT: Maven Wrapper files SHOULD be committed to git
+# We only ignore the jar if you prefer not to check in binaries, but usually it's fine.
+# !.mvn/wrapper/maven-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+

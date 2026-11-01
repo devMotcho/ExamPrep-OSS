@@ -1,0 +1,153 @@
+spring:
+  application:
+    name: examprep-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/examprep_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:examprep_user}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        session_factory:
+          statement_inspector: com.exam_prep.api.config.CustomStatementInspector
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+  security:
+    oauth2:
+      client:
+        # Spring refuses an empty client id at startup, even for a provider that is off. "not-configured"
+        # keeps OAuth optional: SecurityConfig ignores a provider that still has this value.
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            redirect-uri: "${OAUTH2_REDIRECT_BASE_URI:{baseUrl}}/auth/oauth2/callback/{registrationId}"
+            scope: openid, profile, email
+          microsoft:
+            client-id: ${MICROSOFT_CLIENT_ID:not-configured}
+            client-secret: ${MICROSOFT_CLIENT_SECRET:}
+            redirect-uri: "${OAUTH2_REDIRECT_BASE_URI:{baseUrl}}/auth/oauth2/callback/{registrationId}"
+            scope: openid, profile, email
+            authorization-grant-type: authorization_code
+            client-name: Microsoft
+        provider:
+          microsoft:
+            authorization-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/oauth2/v2.0/authorize
+            token-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/oauth2/v2.0/token
+            jwk-set-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/discovery/v2.0/keys
+            user-name-attribute: sub
+
+app:
+  jwt:
+    # Required, at least 32 bytes: the app refuses to start otherwise (see JwtService).
+    secret: ${JWT_SECRET:}
+    access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  # Public base URL of this API (including the /api context path), used for email unsubscribe links.
+  public-api-url: ${PUBLIC_API_URL:http://localhost:8080/api}
+  cookie:
+    same-site: ${COOKIE_SAME_SITE:Lax}
+    secure: ${COOKIE_SECURE:false}
+  # Accounts are seeded only when both values are set and the password passes AdminSeeder's rules.
+  admin:
+    email: ${DEFAULT_ADMIN_EMAIL:}
+    password: ${DEFAULT_ADMIN_PASSWORD:}
+  dev:
+    email: ${DEFAULT_DEV_EMAIL:}
+    password: ${DEFAULT_DEV_PASSWORD:}
+  rate-limit:
+    login-limit: 5
+    register-limit: 3
+    contact-limit: 3
+    telemetry-limit: ${RATE_LIMIT_TELEMETRY:30}
+    default-limit: 60
+  # Per user, for gallery images and question imports. 0 turns a limit off. The multipart limit above still
+  # caps every file at 50MB. Blog media (admins only) and AI PDFs (their own 32MB limit and quota) are separate.
+  upload:
+    max-mb: ${MAX_UPLOAD_MB:10}
+    max-per-day: ${MAX_UPLOADS_PER_DAY:100}
+  oauth:
+    google:
+      enabled: ${OAUTH_GOOGLE_ENABLED:false}
+    microsoft:
+      enabled: ${OAUTH_MICROSOFT_ENABLED:false}
+
+server:
+  # Tomcat applies X-Forwarded-* only for connections from a trusted proxy (private addresses by default).
+  # For a proxy on a public address, set SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: a regular expression of proxy
+  # IPs, not a CIDR, and it replaces the default list (e.g. 203\.0\.113\.10).
+  forward-headers-strategy: native
+  servlet:
+    context-path: /api
+    session:
+      cookie:
+        # JSESSIONID is only used during the OAuth2 handshake (a brief server-side
+        # session between /authorize and /callback). The provider returns the browser
+        # with a top-level GET, which SameSite=Lax allows, so Lax works with or without
+        # HTTPS. Set SESSION_COOKIE_SECURE=true (or COOKIE_SECURE=true) when serving over
+        # HTTPS. SameSite=None is rejected by browsers unless the cookie is also Secure.
+        same-site: ${SESSION_COOKIE_SAME_SITE:Lax}
+        secure: ${SESSION_COOKIE_SECURE:${COOKIE_SECURE:false}}
+        http-only: true
+
+notification:
+  email:
+    enabled: false
+    sender-name: ${EMAIL_SENDER_NAME:ExamPrep}
+    # From address. Falls back to SMTP_USERNAME; if neither is an email address, nothing is sent.
+    from: ${SMTP_FROM:}
+
+aws:
+  s3:
+    access-key: ${AWS_S3_ACCESS_KEY:}
+    secret-key: ${AWS_S3_SECRET_KEY:}
+    region: ${AWS_S3_REGION:}
+    bucket: ${AWS_S3_BUCKET:}
+    # Optional: an S3-compatible server such as MinIO, as this server reaches it (http://minio:9000 in Compose).
+    endpoint: ${AWS_S3_ENDPOINT:}
+    # Optional: the same server as browsers reach it, used in presigned URLs. Defaults to the endpoint above.
+    public-endpoint: ${AWS_S3_PUBLIC_ENDPOINT:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    # SMTP is optional, so a missing or unreachable mail server must not report the app as down.
+    mail:
+      enabled: false
+
+logging:
+  level:
+    # PDFBox warnings can quote fragments of a user's document.
+    org.apache.pdfbox: ERROR
+    org.apache.fontbox: ERROR

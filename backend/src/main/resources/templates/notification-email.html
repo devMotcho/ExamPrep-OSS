@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e1e7e6; }
+        .header { border-bottom: 2px solid #222222; padding-bottom: 15px; margin-bottom: 20px; }
+        .title { font-size: 22px; font-weight: bold; color: #111111; margin: 0; }
+        .badge { display: inline-block; padding: 4px 8px; font-size: 11px; font-weight: bold; background-color: #e2e8f0; color: #4a5568; border-radius: 4px; margin-top: 5px; text-transform: uppercase; }
+        .content { line-height: 1.6; font-size: 14px; margin-bottom: 35px; white-space: pre-wrap; }
+        .metadata-section { background-color: #f8fafc; border-radius: 6px; padding: 15px; border-left: 4px solid #cbd5e1; }
+        .metadata-title { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-top: 0; margin-bottom: 10px; }
+        .metadata-table { width: 100%; border-collapse: collapse; }
+        .metadata-table td { padding: 4px 0; font-size: 13px; vertical-align: top; }
+        .metadata-key { font-weight: 600; color: #475569; width: 30%; }
+        .metadata-value { color: #334155; }
+        .footer { font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <p class="title" th:text="${subject}">Subject</p>
+        <span class="badge" th:text="${type}">TYPE</span>
+    </div>
+
+    <div class="content" th:text="${body}">Body content</div>
+
+    <div class="metadata-section" th:if="${metadata != null and !metadata.isEmpty()}">
+        <p class="metadata-title">Metadata</p>
+        <table class="metadata-table">
+            <tr th:each="entry : ${metadata}">
+                <td class="metadata-key" th:text="${entry.key}">key</td>
+                <td class="metadata-value" th:text="${entry.value}">value</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">This is an automated system notification from ExamPrep Platform.</div>
+</div>
+</body>
+</html>

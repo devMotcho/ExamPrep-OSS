@@ -1,0 +1,72 @@
+{
+  "id": "/",
+  "name": "ExamPrep",
+  "short_name": "ExamPrep",
+  "description": "Treina para os teus exames com perguntas de escolha múltipla e nota de 0 a 20.",
+  "lang": "pt-PT",
+  "dir": "ltr",
+  "start_url": "/pt/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020817",
+  "theme_color": "#6D28D9",
+  "categories": [
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Painel",
+      "short_name": "Painel",
+      "url": "/pt/dashboard",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Áreas de estudo",
+      "short_name": "Áreas",
+      "url": "/pt/study-areas",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nova área de estudo",
+      "short_name": "Nova área",
+      "url": "/pt/study-areas/new",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

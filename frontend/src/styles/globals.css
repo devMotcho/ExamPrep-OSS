@@ -1,0 +1,292 @@
+@import "@fontsource-variable/geist";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 19% 39%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    /* Configurable Colors placeholders */
+    --color-primary: 222.2 47.4% 11.2%;
+    --color-secondary: 210 40% 96.1%;
+    --color-accent: 210 40% 96.1%;
+
+    /* Semantic feedback colors */
+    --color-success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --color-warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --color-info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --color-danger: 0 84% 60%;
+    --danger-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 22% 74%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Used as text and tints on dark surfaces, so it has to stay readable there */
+    --destructive: 0 84% 68%;
+    --destructive-foreground: 222.2 47.4% 11.2%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    /* Readable fallback until the site config has loaded */
+    --color-primary: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .rich-text-content,
+  .prose {
+    @apply text-current;
+  }
+  .rich-text-content ul, .prose ul {
+    @apply list-disc pl-5 my-2 space-y-1;
+  }
+  .rich-text-content ol, .prose ol {
+    @apply list-decimal pl-5 my-2 space-y-1;
+  }
+  .rich-text-content li, .prose li {
+    @apply pl-1 leading-normal;
+  }
+  .rich-text-content p, .prose p {
+    @apply my-2 leading-relaxed;
+  }
+  .rich-text-content strong, .prose strong {
+    @apply font-bold text-foreground;
+  }
+  .rich-text-content h1, .prose h1,
+  .rich-text-content h2, .prose h2,
+  .rich-text-content h3, .prose h3,
+  .rich-text-content h4, .prose h4 {
+    @apply font-black text-foreground mt-3 mb-1.5;
+  }
+  .rich-text-content code, .prose code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-primary;
+  }
+  .rich-text-content pre, .prose pre {
+    @apply bg-muted/80 p-3 rounded-xl overflow-x-auto my-2 text-xs font-mono border border-border/50;
+  }
+  .rich-text-content blockquote, .prose blockquote {
+    @apply border-l-4 border-primary/40 pl-4 py-1 my-2 italic text-muted-foreground bg-primary/[0.02] rounded-r-lg;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* ── App shell ─────────────────────────────────────────────────────────────── */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  padding-top: var(--sat);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Any entrance animation stays short, so pages never look washed out while they settle. */
+.animate-in {
+  animation-duration: 150ms !important;
+}
+
+/* ── Dialogs: quick centered fade, bottom sheet on phones ──────────────────── */
+/* No transforms for positioning: animation keyframes would override them and throw the dialog off-centre. */
+@keyframes dialog-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(1.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+[data-slot="dialog-overlay"] {
+  animation: dialog-fade 120ms ease-out;
+}
+
+[data-slot="dialog-content"]:not([data-fullscreen]) {
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(100dvh - 2rem);
+  animation: dialog-fade 120ms ease-out !important;
+}
+
+:where([data-slot="dialog-content"]) {
+  overflow-y: auto;
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 639px) {
+  [data-slot="dialog-content"]:not([data-fullscreen]) {
+    inset: auto 0 0 0;
+    margin: 0;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 90dvh !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    padding-bottom: max(1rem, var(--sab));
+    animation: sheet-up 160ms ease-out !important;
+  }
+}
+
+/* ── Phones: 44px tap targets, and 16px inputs so iOS does not zoom on focus ── */
+@media (max-width: 767px) {
+  button:not([role="switch"]):not([data-exam-option]):not([data-no-tap]),
+  [data-slot="button"],
+  summary,
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+    min-height: 44px;
+  }
+
+  /* Icon-only buttons. Not on text buttons: a fixed min-width stops flex items sizing to their label. */
+  button:not([role="switch"]):has(> svg:only-child),
+  [data-slot="button"]:has(> svg:only-child) {
+    min-width: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+
+  [role="switch"] {
+    position: relative;
+  }
+  [role="switch"]::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+}
+
+/* Printable reports. The sheet is a child of <body> (see PrintableReport) with its own paper palette,
+   so the app's chrome and dark mode never reach the page. */
+@media screen {
+  .print-root { display: none; }
+}
+
+@media print {
+  @page { size: A4; margin: 16mm; }
+
+  html, body { background: #fff !important; color-scheme: light; }
+  body:has(> .print-root) > :not(.print-root) { display: none !important; }
+
+  .print-root {
+    display: block;
+    color: #111827;
+    background: #fff;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .print-root h1 { font-size: 20pt; font-weight: 800; margin: 2pt 0; }
+  .print-root h2 { font-size: 12pt; font-weight: 800; margin: 0 0 4pt; }
+  .print-root .pr-brand { font-size: 9pt; font-weight: 700; color: #4b5563; }
+  .print-root .pr-muted { font-size: 10pt; color: #4b5563; }
+  .print-root .pr-header { padding-bottom: 8pt; margin-bottom: 12pt; border-bottom: 1.5pt solid #111827; }
+  .print-root .pr-section { margin-bottom: 14pt; }
+  .print-root .pr-big { font-size: 16pt; font-weight: 800; margin-bottom: 4pt; }
+  .print-root ul { list-style: disc; padding-left: 14pt; }
+  .print-root table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  .print-root th { text-align: left; font-weight: 700; border-bottom: 1pt solid #111827; padding: 3pt 4pt; }
+  .print-root td { border-bottom: 0.5pt solid #d1d5db; padding: 3pt 4pt; vertical-align: top; overflow-wrap: anywhere; }
+  .print-root th.pr-num, .print-root td.pr-num { text-align: right; white-space: nowrap; }
+  .print-root tr { break-inside: avoid; }
+  .print-root h2 { break-after: avoid; }
+  .print-root .pr-section:has(> p:only-of-type) { break-inside: avoid; }
+}

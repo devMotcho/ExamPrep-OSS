@@ -1,0 +1,77 @@
+# Self-hosted ExamPrep: PostgreSQL, the API and the web app behind nginx.
+# Copy .env.example to .env, fill in the required values, then: docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-examprep}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-examprep}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-examprep}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-examprep}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:?set DEFAULT_ADMIN_EMAIL in .env}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:?set DEFAULT_ADMIN_PASSWORD in .env}
+      DEFAULT_DEV_EMAIL: ${DEFAULT_DEV_EMAIL:-}
+      DEFAULT_DEV_PASSWORD: ${DEFAULT_DEV_PASSWORD:-}
+      ALLOWED_ORIGINS: ${PUBLIC_URL:-http://localhost:8080}
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
+      PUBLIC_API_URL: ${PUBLIC_URL:-http://localhost:8080}/api
+      OAUTH2_REDIRECT_BASE_URI: ${PUBLIC_URL:-http://localhost:8080}/api
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
+      SESSION_COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
+      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      EMAIL_SENDER_NAME: ${EMAIL_SENDER_NAME:-ExamPrep}
+      AWS_S3_ACCESS_KEY: ${AWS_S3_ACCESS_KEY:-}
+      AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY:-}
+      AWS_S3_REGION: ${AWS_S3_REGION:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
+      AWS_S3_PUBLIC_ENDPOINT: ${AWS_S3_PUBLIC_ENDPOINT:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      MAX_UPLOADS_PER_DAY: ${MAX_UPLOADS_PER_DAY:-100}
+      OAUTH_GOOGLE_ENABLED: ${OAUTH_GOOGLE_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-disabled}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-disabled}
+      OAUTH_MICROSOFT_ENABLED: ${OAUTH_MICROSOFT_ENABLED:-false}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-disabled}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-disabled}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      AI_SETTINGS_ENCRYPTION_KEY: ${AI_SETTINGS_ENCRYPTION_KEY:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+
+volumes:
+  pgdata:

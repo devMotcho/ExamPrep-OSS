@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- seo:start -->
+    <title>ExamPrep | Exames de escolha múltipla para estudantes</title>
+    <meta name="description" content="Treina para os teus exames com perguntas de escolha múltipla, nota de 0 a 20 e revisão de cada resposta." data-seo-static />
+    <meta property="og:type" content="website" data-seo-static />
+    <meta property="og:site_name" content="ExamPrep" data-seo-static />
+    <meta property="og:locale" content="pt_PT" data-seo-static />
+    <meta property="og:title" content="ExamPrep | Exames de escolha múltipla para estudantes" data-seo-static />
+    <meta property="og:description" content="Treina para os teus exames com perguntas de escolha múltipla, nota de 0 a 20 e revisão de cada resposta." data-seo-static />
+    <meta name="twitter:card" content="summary" data-seo-static />
+    <!-- seo:end -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020817" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ExamPrep" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme') || 'system';
+          if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
