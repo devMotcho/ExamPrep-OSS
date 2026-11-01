@@ -18,5 +18,6 @@ ENV CSP_EXTRA_MEDIA_SOURCES=""
 ENV HSTS_HEADER_VALUE=""
 COPY infra/nginx.conf /etc/nginx/templates/default.conf.template
 COPY infra/security-headers.conf /etc/nginx/security-headers.conf
+COPY infra/backend-proxy.conf /etc/nginx/backend-proxy.conf
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 EXPOSE 8080

@@ -45,7 +45,11 @@ Prompts and explanations are rendered as HTML. `RichTextSanitizer` reduces them 
 
 ## Rate limits
 
-`RateLimitFilter` keeps one bucket per limit class, route and client: a POST to a sensitive route has its own stricter bucket that no other request can touch, and ids in a path share one route. Each client also has a total per minute. IPv6 clients count per /64, here and in login lockout. Everything is in memory, so a single backend instance is assumed.
+`RateLimitFilter` keeps one bucket per limit class, route and client: a POST to a sensitive route has its own stricter bucket that no other request can touch, and ids in a path share one route. Each client also has a total per minute. IPv6 clients count per /64, here and in login lockout. Routes are compared decoded and normalized, the way the router sees them. Everything is in memory, so a single backend instance is assumed.
+
+## Request size
+
+nginx allows 5 MB, and 50 MB on the routes in `infra/nginx.conf` that take a file. A new upload route must be added there. `JsonBodyLimitFilter` applies the 5 MB to every request that isn't multipart, before anything else in the backend sees it.
 
 ## Roles
 

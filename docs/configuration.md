@@ -49,11 +49,15 @@ Any S3-compatible service. Without it, uploads return 503 and everything else wo
 | `AWS_S3_ENDPOINT` | Set this for MinIO, R2 and others |
 | `AWS_S3_PUBLIC_ENDPOINT` | The address browsers use, if different from `AWS_S3_ENDPOINT` |
 
+## Request size
+
+Requests are capped at 5 MB, by nginx and, for anything that isn't a file upload, by the backend too. Only the routes that take a file accept up to 50 MB. Both answer 413. If you run your own proxy in front, give it limits of its own.
+
 ## Upload limits
 
 | Variable | Default | Notes |
 |---|---|---|
-| `MAX_UPLOAD_MB` | `10` | Gallery images and question files. `0` turns it off; requests are capped at 50 MB regardless |
+| `MAX_UPLOAD_MB` | `10` | Gallery images and question files. `0` turns it off; upload requests are capped at 50 MB regardless |
 | `MAX_UPLOADS_PER_DAY` | `100` | Per user, per UTC day. `0` turns it off |
 
 ## Social sign-in
