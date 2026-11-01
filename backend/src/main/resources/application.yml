@@ -80,6 +80,10 @@ app:
   dev:
     email: ${DEFAULT_DEV_EMAIL:}
     password: ${DEFAULT_DEV_PASSWORD:}
+  study-areas:
+    # Study areas one user can own (0 turns the limit off; administrators have none) and questions per import file.
+    max-per-user: ${MAX_STUDY_AREAS_PER_USER:100}
+    max-import-questions: ${MAX_IMPORT_QUESTIONS:500}
   confirmation:
     max-sends-per-hour: ${CONFIRMATION_CODE_SENDS_PER_HOUR:5}
   rate-limit:

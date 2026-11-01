@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class UpdateGalleryImageDto {
+    @jakarta.validation.constraints.Size(max = ContentLimits.FILENAME)
     private String filename;
 
 

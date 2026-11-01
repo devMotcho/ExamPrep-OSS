@@ -10,6 +10,11 @@ import java.time.ZonedDateTime;
 
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     Optional<UserEntity> findByEmail(String email);
+
+    /** Serialises per-user checks that count rows before inserting one. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select u from UserEntity u where u.id = :id")
+    Optional<UserEntity> lockById(@org.springframework.data.repository.query.Param("id") UUID id);
     boolean existsByEmail(String email);
     List<UserEntity> findByRoleIn(Collection<String> roles);
     List<UserEntity> findByRole(String role);

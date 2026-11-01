@@ -554,7 +554,7 @@ const AdminStudyAreasView: React.FC = () => {
                         {t(`settings.adminAreas.visibility.${area.visibility}`, area.visibility)}
                       </Badge>
                     </td>
-                    <td className="p-4 text-muted-foreground text-xs">{area.createdBy}</td>
+                    <td className="p-4 text-muted-foreground text-xs">{area.createdBy ?? '-'}</td>
                     <td className="p-4 text-center font-semibold text-foreground">{area.questionCount}</td>
                     <td className="p-4 text-muted-foreground text-xs">
                       {new Date(area.createdAt).toLocaleDateString()}

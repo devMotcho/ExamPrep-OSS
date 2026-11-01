@@ -1,5 +1,6 @@
 package com.exam_prep.api.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.exam_prep.api.dto.ChapterDto;
+import com.exam_prep.api.dto.PageResponse;
+import com.exam_prep.api.dto.StudyAreaSummaryDto;
 import com.exam_prep.api.dto.QuestionDto;
 import com.exam_prep.api.dto.QuestionOrderDto;
 import com.exam_prep.api.dto.ReorderRequest;
@@ -51,19 +54,23 @@ public class StudyAreaController {
     }
 
     @PostMapping("/study-areas")
-    public ResponseEntity<StudyAreaDto> createStudyArea(@RequestBody StudyAreaDto dto, Principal principal) {
+    public ResponseEntity<StudyAreaDto> createStudyArea(@Valid @RequestBody StudyAreaDto dto, Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(studyAreaService.createStudyArea(dto, user));
     }
 
     @GetMapping("/study-areas")
-    public ResponseEntity<List<StudyAreaDto>> listStudyAreas(Principal principal) {
+    public ResponseEntity<PageResponse<StudyAreaSummaryDto>> listStudyAreas(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String q,
+            Principal principal) {
         UserEntity user = getOptionalUser(principal);
-        return ResponseEntity.ok(studyAreaService.listPublicOrUserOwn(user));
+        return ResponseEntity.ok(studyAreaService.listVisible(user, page, size, q));
     }
 
     @GetMapping("/study-areas/mine")
-    public ResponseEntity<List<StudyAreaDto>> listMyStudyAreas(Principal principal) {
+    public ResponseEntity<List<StudyAreaSummaryDto>> listMyStudyAreas(Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.ok(studyAreaService.listUserJoinedOrCreated(user));
     }
@@ -77,7 +84,7 @@ public class StudyAreaController {
     @PutMapping("/study-areas/{id}")
     public ResponseEntity<StudyAreaDto> updateStudyArea(
             @PathVariable UUID id,
-            @RequestBody StudyAreaDto dto,
+            @Valid @RequestBody StudyAreaDto dto,
             Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.ok(studyAreaService.updateStudyArea(id, dto, user));
@@ -114,7 +121,7 @@ public class StudyAreaController {
     @PostMapping("/study-areas/{id}/questions")
     public ResponseEntity<QuestionDto> addQuestion(
             @PathVariable UUID id,
-            @RequestBody QuestionDto questionDto,
+            @Valid @RequestBody QuestionDto questionDto,
             Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(studyAreaService.addQuestion(id, questionDto, user));
@@ -133,7 +140,7 @@ public class StudyAreaController {
     @PutMapping("/questions/{id}")
     public ResponseEntity<QuestionDto> editQuestion(
             @PathVariable UUID id,
-            @RequestBody QuestionDto questionDto,
+            @Valid @RequestBody QuestionDto questionDto,
             Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.ok(studyAreaService.editQuestion(id, questionDto, user));
@@ -159,7 +166,7 @@ public class StudyAreaController {
     @PostMapping("/study-areas/{studyAreaId}/chapters")
     public ResponseEntity<ChapterDto> createChapter(
             @PathVariable UUID studyAreaId,
-            @RequestBody ChapterDto chapterDto,
+            @Valid @RequestBody ChapterDto chapterDto,
             Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -169,7 +176,7 @@ public class StudyAreaController {
     @PutMapping("/chapters/{chapterId}")
     public ResponseEntity<ChapterDto> editChapter(
             @PathVariable UUID chapterId,
-            @RequestBody ChapterDto chapterDto,
+            @Valid @RequestBody ChapterDto chapterDto,
             Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.ok(studyAreaService.editChapter(chapterId, chapterDto, user));

@@ -669,7 +669,7 @@ export const StudyAreaDetail: React.FC = () => {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-6 border-t border-border/30 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <User className="h-4 w-4" />
-              <span>{t('studyAreaDetail.createdBy', 'Created by:')} <span className="font-semibold text-foreground/80">{studyArea.createdBy}</span></span>
+              <span>{t('studyAreaDetail.createdBy', 'Created by:')} <span className="font-semibold text-foreground/80">{studyArea.createdBy ?? t('studyAreas.anonymousAuthor', 'Anonymous')}</span></span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" />

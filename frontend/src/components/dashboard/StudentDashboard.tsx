@@ -288,7 +288,7 @@ export const StudentDashboard: React.FC = () => {
                   </p>
                 </div>
                 <div className="border-t border-border/30 pt-3 mt-4 text-[11px] text-muted-foreground flex items-center justify-between">
-                  <span>{t('studentDashboard.by', 'By:')} {area.createdBy}</span>
+                  <span>{t('studentDashboard.by', 'By:')} {area.createdBy ?? t('studyAreas.anonymousAuthor', 'Anonymous')}</span>
                   <span className="font-semibold text-primary flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     {t('studentDashboard.study', 'Study')} <ChevronRight className="h-3 w-3" />
                   </span>

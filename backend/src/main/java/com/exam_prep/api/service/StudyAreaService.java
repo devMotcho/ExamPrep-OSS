@@ -5,9 +5,13 @@ import com.exam_prep.api.entity.*;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.repository.*;
 import com.exam_prep.api.user.UserEntity;
+import com.exam_prep.api.user.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,8 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,10 +36,24 @@ public class StudyAreaService {
     private final UserStudyAreaRepository userStudyAreaRepository;
     private final ChapterRepository chapterRepository;
     private final S3Service s3Service;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    static final int MAX_PAGE_SIZE = 100;
+    /** Stands in for "no user" in queries: the id of nobody. */
+    private static final UUID NO_USER = new UUID(0, 0);
+
+    /** Study areas one user can own. 0 turns the limit off; administrators have none. */
+    @Value("${app.study-areas.max-per-user:100}")
+    private int maxAreasPerUser = 100;
+
+    /** Questions accepted from one import file. */
+    @Value("${app.study-areas.max-import-questions:500}")
+    private int maxImportQuestions = 500;
 
     @Transactional
     public StudyAreaDto createStudyArea(StudyAreaDto dto, UserEntity user) {
+        enforceAreaQuota(user);
         StudyAreaEntity studyArea = StudyAreaEntity.builder()
                 .title(RichTextSanitizer.plainText(dto.getTitle()))
                 .description(RichTextSanitizer.plainText(dto.getDescription()))
@@ -53,21 +73,54 @@ public class StudyAreaService {
         return mapToDto(studyArea, user);
     }
 
-    public List<StudyAreaDto> listPublicOrUserOwn(UserEntity user) {
-        if (user == null) {
-            return studyAreaRepository.findAllPublic().stream()
-                    .map(s -> mapToDto(s, null))
-                    .collect(Collectors.toList());
+    private void enforceAreaQuota(UserEntity user) {
+        boolean staff = "ROLE_ADMIN".equals(user.getRole()) || "ROLE_DEV".equals(user.getRole());
+        if (maxAreasPerUser <= 0 || staff) {
+            return;
         }
-        return studyAreaRepository.findAllPublicOrUserOwn(user.getId()).stream()
-                .map(s -> mapToDto(s, user))
-                .collect(Collectors.toList());
+        // Held until the transaction ends, so simultaneous requests cannot pass the limit together.
+        userRepository.lockById(user.getId());
+        if (studyAreaRepository.countByCreatedById(user.getId()) >= maxAreasPerUser) {
+            throw new AppException("You have reached the limit of " + maxAreasPerUser + " study areas.", HttpStatus.TOO_MANY_REQUESTS);
+        }
     }
 
-    public List<StudyAreaDto> listUserJoinedOrCreated(UserEntity user) {
-        return studyAreaRepository.findAllJoinedOrCreatedBy(user.getId()).stream()
-                .map(s -> mapToDto(s, user))
-                .collect(Collectors.toList());
+    /** Public areas plus the user's own, most popular first. {@code page} starts at 0. */
+    @Transactional(readOnly = true)
+    public PageResponse<StudyAreaSummaryDto> listVisible(UserEntity user, int page, int size, String search) {
+        Page<StudyAreaSummaryDto> result = studyAreaRepository.findVisibleSummaries(
+                user == null ? NO_USER : user.getId(), toLikePattern(search),
+                PageRequest.of(Math.max(page, 0), clampPageSize(size)));
+        markStarred(result.getContent(), user);
+        return PageResponse.of(result);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudyAreaSummaryDto> listUserJoinedOrCreated(UserEntity user) {
+        List<StudyAreaSummaryDto> result = studyAreaRepository.findJoinedOrCreatedSummaries(user.getId());
+        markStarred(result, user);
+        return result;
+    }
+
+    static int clampPageSize(int size) {
+        return Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+    }
+
+    private static String toLikePattern(String search) {
+        if (search == null || search.isBlank()) {
+            return "";
+        }
+        String trimmed = search.trim();
+        String limited = trimmed.length() > ContentLimits.TITLE ? trimmed.substring(0, ContentLimits.TITLE) : trimmed;
+        return "%" + limited.toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
+    private void markStarred(List<StudyAreaSummaryDto> summaries, UserEntity user) {
+        if (user == null || summaries.isEmpty()) {
+            return;
+        }
+        Set<UUID> starred = userStudyAreaRepository.findStudyAreaIdsByUserId(user.getId());
+        summaries.forEach(summary -> summary.setStarred(starred.contains(summary.getId())));
     }
 
     public StudyAreaDto getStudyAreaDetail(UUID id, UserEntity user) {
@@ -317,13 +370,14 @@ public class StudyAreaService {
         return mapToDto(studyArea, user);
     }
 
-    public List<StudyAreaDto> listAllForAdmin(UserEntity user) {
+    @Transactional(readOnly = true)
+    public List<StudyAreaSummaryDto> listAllForAdmin(UserEntity user) {
         if (!"ROLE_ADMIN".equals(user.getRole()) && !"ROLE_DEV".equals(user.getRole())) {
             throw new AppException("Access denied", HttpStatus.FORBIDDEN);
         }
-        return studyAreaRepository.findAll().stream()
-                .map(s -> mapToDto(s, user))
-                .collect(Collectors.toList());
+        List<StudyAreaSummaryDto> result = studyAreaRepository.findAllSummaries();
+        markStarred(result, user);
+        return result;
     }
 
     @Transactional
@@ -360,6 +414,14 @@ public class StudyAreaService {
         if (item.getOptions() == null || item.getOptions().size() < 2 || item.getOptions().size() > 6) {
             throw new AppException("Each question must have between 2 and 6 options", HttpStatus.BAD_REQUEST);
         }
+        boolean tooLong = item.getPrompt().length() > ContentLimits.RICH_TEXT
+                || (item.getExplanation() != null && item.getExplanation().length() > ContentLimits.RICH_TEXT)
+                || (item.getChapter() != null && item.getChapter().length() > ContentLimits.TITLE);
+        boolean badOption = item.getOptions().stream()
+                .anyMatch(o -> o == null || o.getText() == null || o.getText().isBlank() || o.getText().length() > ContentLimits.OPTION);
+        if (tooLong || badOption) {
+            throw new AppException("A question has an empty or too long field", HttpStatus.BAD_REQUEST);
+        }
         long correctCount = item.getOptions().stream().filter(OptionImportDto::isCorrect).count();
         if (correctCount != 1) {
             throw new AppException("Each question must have exactly one correct option", HttpStatus.BAD_REQUEST);
@@ -369,6 +431,9 @@ public class StudyAreaService {
     @Transactional
     public List<QuestionDto> importQuestions(UUID studyAreaId, List<QuestionImportDto> imports, UserEntity user) {
         StudyAreaEntity studyArea = requireImportAccess(studyAreaId, user);
+        if (imports.size() > maxImportQuestions) {
+            throw new AppException("A file can import at most " + maxImportQuestions + " questions.", HttpStatus.PAYLOAD_TOO_LARGE);
+        }
 
             java.util.Map<String, ChapterEntity> chapterCache = new java.util.HashMap<>();
             chapterRepository.findByStudyAreaIdOrderByCreatedAtAsc(studyAreaId)
@@ -478,7 +543,7 @@ public class StudyAreaService {
                 .id(entity.getId())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .createdBy(entity.getCreatedBy().getName() != null ? entity.getCreatedBy().getName() : entity.getCreatedBy().getEmail())
+                .createdBy(entity.getCreatedBy().getName() == null || entity.getCreatedBy().getName().isBlank() ? null : entity.getCreatedBy().getName())
                 .createdById(entity.getCreatedBy().getId())
                 .createdAt(entity.getCreatedAt())
                 .visibility(entity.getVisibility())

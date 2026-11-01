@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.exam_prep.api.dto.StudyAreaDto;
+import com.exam_prep.api.dto.StudyAreaSummaryDto;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.service.StudyAreaService;
 import com.exam_prep.api.service.UserService;
@@ -33,7 +33,7 @@ public class AdminStudyAreaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<StudyAreaDto>> getAllStudyAreas(Principal principal) {
+    public ResponseEntity<List<StudyAreaSummaryDto>> getAllStudyAreas(Principal principal) {
         UserEntity user = getAuthenticatedUser(principal);
         return ResponseEntity.ok(studyAreaService.listAllForAdmin(user));
     }

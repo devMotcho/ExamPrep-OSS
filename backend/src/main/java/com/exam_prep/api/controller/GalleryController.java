@@ -100,7 +100,7 @@ public class GalleryController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GalleryImageDto> updateImage(@PathVariable UUID id, @RequestBody UpdateGalleryImageDto dto, Principal principal) {
+    public ResponseEntity<GalleryImageDto> updateImage(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody UpdateGalleryImageDto dto, Principal principal) {
         if (!isFeatureEnabled("gallery_enabled")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

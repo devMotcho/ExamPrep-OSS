@@ -215,12 +215,15 @@ public class AdminUserController {
     public static class CreateUserDto {
 
         @NotBlank(message = "Name is required.")
+        @Size(max = com.exam_prep.api.dto.ContentLimits.NAME)
         private String name;
 
         @NotBlank(message = "Email is required.")
         @Email(message = "Please enter a valid email address.")
+        @Size(max = com.exam_prep.api.dto.ContentLimits.EMAIL)
         private String email;
 
+        @Size(max = com.exam_prep.api.dto.ContentLimits.PHONE)
         private String phone;
 
         private String role;
@@ -229,7 +232,7 @@ public class AdminUserController {
         private boolean active = true;
 
         @NotBlank(message = "Password is required for new users.")
-        @Size(min = 8, message = "Password must be at least 8 characters.")
+        @Size(min = 8, max = com.exam_prep.api.dto.ContentLimits.PASSWORD, message = "Password must be between 8 and 72 characters.")
         private String password;
     }
 
@@ -238,12 +241,15 @@ public class AdminUserController {
     public static class UpdateUserDto {
 
         @NotBlank(message = "Name is required.")
+        @Size(max = com.exam_prep.api.dto.ContentLimits.NAME)
         private String name;
 
         @NotBlank(message = "Email is required.")
         @Email(message = "Please enter a valid email address.")
+        @Size(max = com.exam_prep.api.dto.ContentLimits.EMAIL)
         private String email;
 
+        @Size(max = com.exam_prep.api.dto.ContentLimits.PHONE)
         private String phone;
 
         private String role;
@@ -256,7 +262,7 @@ public class AdminUserController {
     @Data
     public static class ResetPasswordRequest {
         @NotBlank(message = "Password is required.")
-        @Size(min = 8, message = "Password must be at least 8 characters.")
+        @Size(min = 8, max = com.exam_prep.api.dto.ContentLimits.PASSWORD, message = "Password must be between 8 and 72 characters.")
         private String password;
     }
 }

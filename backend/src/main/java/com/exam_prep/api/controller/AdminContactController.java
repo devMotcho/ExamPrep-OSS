@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.exam_prep.api.dto.ContentLimits;
 import com.exam_prep.api.entity.ContactMessageEntity;
 import com.exam_prep.api.entity.ContactMessageStatusEntity;
 import com.exam_prep.api.entity.SiteConfigEntity;
@@ -67,6 +68,9 @@ public class AdminContactController {
         String replyText = request.get("message");
         if (replyText == null || replyText.trim().isEmpty()) {
             throw new IllegalArgumentException("Reply message content cannot be empty.");
+        }
+        if (replyText.length() > ContentLimits.REPLY) {
+            throw new IllegalArgumentException("Reply message is too long.");
         }
 
         log.info("Sending custom email reply to contact message {}", id);
@@ -145,6 +149,9 @@ public class AdminContactController {
         }
         if (color == null || color.trim().isEmpty()) {
             throw new IllegalArgumentException("Status color cannot be empty.");
+        }
+        if (name.trim().length() > 50 || color.trim().length() > 20) {
+            throw new IllegalArgumentException("Status name or color is too long.");
         }
         
         log.info("Creating new status '{}' with color '{}'", name, color);

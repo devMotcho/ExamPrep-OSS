@@ -32,6 +32,16 @@ export const StudyAreasList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isStarring, setIsStarring] = useState<string | null>(null);
   const [pageByMenu, setPageByMenu] = useState({ menu: '', page: 1 });
+  const [serverPages, setServerPages] = useState(1);
+  // The library is searched and paged on the server; the other tabs hold their whole, much shorter, list.
+  const [librarySearch, setLibrarySearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLibrarySearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const currentPage = pageByMenu.menu === activeMenu ? pageByMenu.page : 1;
 
   useEffect(() => {
     if (tabParam === 'starred') {
@@ -53,15 +63,16 @@ export const StudyAreasList: React.FC = () => {
         const data = await examprepApi.listMyStudyAreas();
         setStudyAreas(data.filter((area) => area.starred));
       } else {
-        const data = await examprepApi.listStudyAreas();
-        setStudyAreas(data);
+        const data = await examprepApi.listStudyAreas({ page: currentPage - 1, size: AREAS_PER_PAGE, q: librarySearch || undefined });
+        setStudyAreas(data.content);
+        setServerPages(Math.max(data.totalPages, 1));
       }
     } catch {
       toast({ type: 'error', message: t('studyAreas.loadFailed', 'Could not load the study areas.') });
     } finally {
       setLoading(false);
     }
-  }, [activeMenu, isAuthenticated, user, toast, t]);
+  }, [activeMenu, isAuthenticated, user, toast, t, currentPage, librarySearch]);
 
   useEffect(() => {
     fetchStudyAreas();
@@ -92,25 +103,19 @@ export const StudyAreasList: React.FC = () => {
     }
   };
 
-  const filteredAreas = studyAreas.filter(
-    (area) =>
-      area.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      area.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const isLibrary = activeMenu !== 'my' && activeMenu !== 'starred' || !isAuthenticated;
 
-  const displayAreas = [...filteredAreas];
-  if (activeMenu === 'explore') {
-    displayAreas.sort((a, b) => {
-      const scoreA = (a.starCount || 0) * 10 + (a.questionCount || 0);
-      const scoreB = (b.starCount || 0) * 10 + (b.questionCount || 0);
-      if (scoreB !== scoreA) {
-        return scoreB - scoreA;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }
+  const displayAreas = isLibrary
+    ? studyAreas
+    : studyAreas.filter(
+        (area) =>
+          area.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          area.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
-  const pagedAreas = paginate(displayAreas, pageByMenu.menu === activeMenu ? pageByMenu.page : 1, AREAS_PER_PAGE);
+  const pagedAreas = isLibrary
+    ? { pageItems: displayAreas, currentPage, totalPages: serverPages }
+    : paginate(displayAreas, currentPage, AREAS_PER_PAGE);
 
   return (
     <div className="container mx-auto py-4 sm:py-8 px-0 sm:px-4 max-w-7xl space-y-8">
@@ -387,7 +392,7 @@ export const StudyAreasList: React.FC = () => {
                 <div className="flex flex-col gap-1.5 py-3 border-t border-border/30 text-xs text-muted-foreground mt-3">
                   <div className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
-                    <span>{t('studyAreaDetail.createdBy', 'Created by:')} <span className="font-semibold text-foreground/80">{area.createdBy}</span></span>
+                    <span>{t('studyAreaDetail.createdBy', 'Created by:')} <span className="font-semibold text-foreground/80">{area.createdBy ?? t('studyAreas.anonymousAuthor', 'Anonymous')}</span></span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />

@@ -548,6 +548,7 @@
     "studentView": "Student View"
   },
   "studyAreas": {
+    "anonymousAuthor": "Anonymous",
     "titleMy": "My Study Areas",
     "descMy": "Study environments you have created to practice and collaborate.",
     "titleStarred": "Starred Study Areas",

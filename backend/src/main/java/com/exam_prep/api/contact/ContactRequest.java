@@ -29,5 +29,6 @@ public class ContactRequest {
     @Size(max = 5000, message = "Message must not exceed 5000 characters")
     private String message;
 
+    @Size(max = 10)
     private String code;
 }

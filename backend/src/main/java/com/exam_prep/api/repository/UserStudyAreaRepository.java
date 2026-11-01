@@ -11,4 +11,7 @@ public interface UserStudyAreaRepository extends JpaRepository<UserStudyAreaEnti
     boolean existsByUserIdAndStudyAreaId(UUID userId, UUID studyAreaId);
     long countByStudyAreaId(UUID studyAreaId);
     void deleteByUserIdAndStudyAreaId(UUID userId, UUID studyAreaId);
+
+    @org.springframework.data.jpa.repository.Query("select u.studyAreaId from UserStudyAreaEntity u where u.userId = :userId")
+    java.util.Set<UUID> findStudyAreaIdsByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
 }

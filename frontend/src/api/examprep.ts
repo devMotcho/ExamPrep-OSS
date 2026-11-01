@@ -29,7 +29,8 @@ export interface StudyArea {
   id: string;
   title: string;
   description: string;
-  createdBy: string;
+  /** Null when the creator has no display name. */
+  createdBy: string | null;
   createdById: string;
   createdAt: string;
   visibility: 'PUBLIC' | 'PRIVATE';
@@ -38,6 +39,15 @@ export interface StudyArea {
   starCount: number;
   questions?: Question[];
   chapters?: Chapter[];
+}
+
+/** One page of a server list; `page` starts at 0. */
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 export interface SessionAnswer {
@@ -253,8 +263,8 @@ export const examprepApi = {
     return res.data;
   },
 
-  listStudyAreas: async () => {
-    const res = await axiosInstance.get<StudyArea[]>('/api/study-areas');
+  listStudyAreas: async (params: { page: number; size: number; q?: string }) => {
+    const res = await axiosInstance.get<PageResponse<StudyArea>>('/api/study-areas', { params });
     return res.data;
   },
 

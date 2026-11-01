@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.exam_prep.api.dto.ContentLimits;
 import com.exam_prep.api.entity.CodePurpose;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.security.ClientIpResolver;
@@ -78,8 +79,8 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Email, code, and newPassword are required."));
         }
 
-        if (newPassword.length() < 8) {
-            return ResponseEntity.badRequest().body(Map.of("message", "New password must be at least 8 characters."));
+        if (newPassword.length() < 8 || newPassword.length() > ContentLimits.PASSWORD) {
+            return ResponseEntity.badRequest().body(Map.of("message", "New password must be between 8 and 72 characters."));
         }
 
         confirmationCodeService.validateConfirmationCode(email, code, CodePurpose.PASSWORD_RESET);
@@ -241,8 +242,8 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Both current and new passwords are required."));
         }
 
-        if (newPassword.length() < 8) {
-            return ResponseEntity.badRequest().body(Map.of("message", "New password must be at least 8 characters."));
+        if (newPassword.length() < 8 || newPassword.length() > ContentLimits.PASSWORD) {
+            return ResponseEntity.badRequest().body(Map.of("message", "New password must be between 8 and 72 characters."));
         }
 
         UserEntity user = userService.findByEmail(principal.getName());
