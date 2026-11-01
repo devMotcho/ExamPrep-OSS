@@ -1,4 +1,4 @@
-FROM maven:3.9.6-eclipse-temurin-21-alpine
+FROM maven:3.9-eclipse-temurin-26-alpine
 WORKDIR /app
 # We run spring-boot:run for local development with hot-reload
 CMD ["mvn", "clean", "spring-boot:run"]
