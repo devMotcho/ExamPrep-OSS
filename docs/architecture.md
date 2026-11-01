@@ -27,11 +27,23 @@ browser ── nginx (web) ──┬── static React build
 
 **`/api/api`.** The servlet context path is `/api`, and most controllers also map to `/api`. So the study area route really is `/api/api/study-areas`. It's ugly but consistent; authentication routes are at `/api/auth/...`.
 
-**Settings are in the database.** `site_config` holds branding, feature flags and integration settings, and the admin page edits it. On startup, `EnvConfigSeeder` copies the integration variables from the environment over those rows, so a value set in `.env` wins after a restart. `GET /api/config/public` serves only an explicit allowlist of keys, so a new setting stays private until you add it there.
+**Settings are in the database.** `site_config` holds branding, feature flags and integration settings, and the admin page edits it. On startup, `EnvConfigSeeder` copies the non-secret integration variables from the environment over those rows, so a value set in `.env` wins after a restart. S3 and SMTP secrets are different: `ServiceSettings` reads them from the environment first, they are never copied to the database, and a row is cleared when the environment has the value. Secrets entered in the settings are encrypted when `AI_SETTINGS_ENCRYPTION_KEY` is set. `GET /api/config/public` serves only an explicit allowlist of keys, so a new setting stays private until you add it there.
 
 ## Authentication
 
-Password sign-in uses httpOnly cookies with a short-lived JWT and a rotating refresh token. Social sign-in links to an existing account only when the provider confirms the email is verified.
+All sign-in paths use HttpOnly cookies with a short-lived JWT and a rotating refresh token; tokens are never readable by JavaScript or accepted in a header. Refresh tokens are stored as SHA-256 hashes and belong to a family per sign-in. Logout ends the family, a password change ends all of them except a new one for the current browser, and presenting an already rotated token ends its family (a repeat within 10 seconds, such as another tab, gets a 409 instead).
+
+Social sign-in redirects to the app with a single-use code, valid for 60 seconds and tied to a cookie set on the same redirect. The app posts it to `/api/auth/oauth2/exchange`, which sets the cookies. It links to an existing account only when the provider confirms the email is verified, and a new account counts as confirmed only then too.
+
+Confirmation codes are bound to their purpose (`purpose` in `/api/auth/send-code`), are gone after 5 wrong guesses, and an address receives at most `CONFIRMATION_CODE_SENDS_PER_HOUR` per hour.
+
+## Content safety
+
+Prompts and explanations are rendered as HTML. `RichTextSanitizer` reduces them on write to what the Tiptap editor produces, and `frontend/src/lib/sanitizeHtml.ts` applies the same list when displaying them, which also covers rows saved before the server check existed. Change both together. Titles, descriptions and options are plain text and lose any markup on write.
+
+## Rate limits
+
+`RateLimitFilter` keeps one bucket per limit class, route and client: a POST to a sensitive route has its own stricter bucket that no other request can touch, and ids in a path share one route. Each client also has a total per minute. IPv6 clients count per /64, here and in login lockout. Everything is in memory, so a single backend instance is assumed.
 
 ## Roles
 

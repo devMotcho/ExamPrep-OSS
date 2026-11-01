@@ -65,13 +65,32 @@ COOKIE_SECURE=true
 docker compose up -d
 ```
 
-Forgetting `PUBLIC_URL` breaks links in emails and social sign-in. Bind the published port to your proxy only (`127.0.0.1:8080:80` in `docker-compose.yml`), so nobody can reach the app around it.
+Forgetting `PUBLIC_URL` breaks links in emails and social sign-in. Bind the published port to your proxy only (`127.0.0.1:8080:8080` in `docker-compose.yml`), so nobody can reach the app around it.
+
+The web container keeps the `X-Forwarded-Proto` your proxy sends, so secure cookies and social sign-in work behind it. Caddy, nginx and Traefik set that header by default.
+
+### Security headers
+
+The web container sends a Content-Security-Policy, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy` on every response, and refuses to be framed. Two things depend on your setup:
+
+- **Strict-Transport-Security** is off until you turn it on, because a browser that has seen it refuses plain HTTP for that host until it expires. Once HTTPS works, set `HSTS_HEADER_VALUE=max-age=31536000` in `.env`. It is only sent on requests that arrived over HTTPS.
+- **Images and videos** may load from any `https:` address, which covers S3, R2 and most other hosts. An S3-compatible server on plain HTTP, such as MinIO on a local network, must be added: `CSP_EXTRA_MEDIA_SOURCES=http://minio.local:9000`. Separate several addresses with spaces.
+
+If you change the inline script in `frontend/index.html`, update its hash in `infra/nginx.conf`. A frontend test fails until the two match.
+
+## Upgrading
+
+Upgrading to this version signs everyone out once, as stored refresh tokens are replaced by hashes, and removes confirmation codes in progress. The web container now listens on port 8080 inside the container: if you changed the port mapping in `docker-compose.yml`, change its right-hand side from `80` to `8080`.
+
+S3 and SMTP secrets set in the environment are removed from the database on startup. Secrets you entered in the settings are encrypted on startup when `AI_SETTINGS_ENCRYPTION_KEY` is set.
+
+`GET /api/api/study-areas` now returns one page of summaries (`page`, `size`, `q`) instead of a full list, and `POST /api/auth/send-code` needs a `purpose`. Scripts using the API must follow. `Authorization: Bearer` is no longer accepted.
 
 ## Before you open registration
 
 Anyone who registers can create study areas and upload files. For a public instance:
 
-- Review `MAX_UPLOAD_MB` and `MAX_UPLOADS_PER_DAY` ([configuration](configuration.md)).
+- Review `MAX_UPLOAD_MB`, `MAX_UPLOADS_PER_DAY` and `MAX_STUDY_AREAS_PER_USER` ([configuration](configuration.md)).
 - Turn registration off in **Settings → Features** if it's only for your class, and add users yourself.
 - Configure SMTP, otherwise password reset can't work.
 - Write your own terms and privacy policy. ExamPrep ships none, because what they must say depends on who you are and where you operate. You are responsible for your users' data.

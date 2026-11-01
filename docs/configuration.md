@@ -31,6 +31,7 @@ Needed for password reset, reminders and contact replies.
 |---|---|---|
 | `SMTP_HOST`, `SMTP_PORT` | empty, `587` | |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | empty | |
+| `CONFIRMATION_CODE_SENDS_PER_HOUR` | `5` | Codes one address can receive per hour, 0 turns it off |
 | `SMTP_FROM` | `SMTP_USERNAME` | If neither is a valid address, email stays off and the log says why |
 | `EMAIL_SENDER_NAME` | `ExamPrep` | |
 
@@ -63,11 +64,27 @@ Register the redirect URI `PUBLIC_URL/api/auth/oauth2/callback/google` (or `/mic
 
 An existing account is linked only when the provider confirms the email is verified. Microsoft doesn't always say so, and in that case the sign-in is refused rather than linked.
 
+## Limits
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MAX_STUDY_AREAS_PER_USER` | `100` | 0 turns it off. Administrators have no limit |
+| `MAX_IMPORT_QUESTIONS` | `500` | Questions in one import file |
+| `RATE_LIMIT_DEFAULT` | `120` | Requests per minute per client to one route |
+| `RATE_LIMIT_TOTAL` | `600` | Requests per minute per client overall. Raise both if many people share one address, such as a school |
+
+## Web container
+
+| Variable | Default | Notes |
+|---|---|---|
+| `HSTS_HEADER_VALUE` | empty | For example `max-age=31536000`. See [security headers](self-hosting.md#security-headers) |
+| `CSP_EXTRA_MEDIA_SOURCES` | empty | Plain-HTTP image hosts, such as a local MinIO |
+
 ## AI generation
 
 | Variable | Notes |
 |---|---|
-| `AI_SETTINGS_ENCRYPTION_KEY` | `openssl rand -base64 32`. Without it AI generation is unavailable |
+| `AI_SETTINGS_ENCRYPTION_KEY` | `openssl rand -base64 32`. Without it AI generation is unavailable, and S3 and SMTP secrets entered in the settings are stored unencrypted, which the settings page points out |
 
 The provider, key, model and spending limits are set in the app. See [Writing questions](writing-questions.md#turning-on-ai-generation).
 

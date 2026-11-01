@@ -43,7 +43,7 @@ The file is an array of questions. Chapters are created from the names you use.
 
 1. Set `AI_SETTINGS_ENCRYPTION_KEY` in `.env` (`openssl rand -base64 32`) and restart. It encrypts the provider key in the database. Keep it safe, since losing it means entering the provider key again.
 2. In **Settings → AI Generation**, choose Anthropic or OpenAI, paste your API key, choose a model, and use the test button.
-3. Set the monthly spend cap, the hourly rate limit and the per-user quota. Every generation costs you money, and the PDF is sent to the provider you chose.
+3. Set the monthly spend cap, the hourly rate limit and the per-user quota. Every generation costs you money, and the PDF is sent to the provider you chose. A failed generation counts against the quota and the cap when it cost something, or when it is unclear whether it did, such as after a timeout.
 
 AI drafts can be wrong. Students should never see one that nobody has read.
 
