@@ -77,9 +77,9 @@ export const PublicFooter: React.FC = () => {
         {/* Brand & Tagline */}
         <div className="md:col-span-4 space-y-4">
           <Link to={`/${locale}`} className="flex items-center gap-3 rounded-lg w-fit min-h-11 group">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden shrink-0 ${config.logo_url ? '' : 'bg-primary/10'}`}>
               {config.logo_url ? (
-                <img src={config.logo_url} alt="" className="w-full h-full object-cover" />
+                <img src={config.logo_url} alt="" className="w-full h-full object-contain" />
               ) : (
                 <ClipboardCheck className="text-primary w-4.5 h-4.5" />
               )}

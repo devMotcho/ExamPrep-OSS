@@ -4,9 +4,9 @@ import faviconUrl from '../../assets/favicon.svg';
 
 export const defaultConfig: SiteConfig = {
   // eslint-disable-next-line no-restricted-syntax
-  primary_color: '#000000',
+  primary_color: '#0f766e',
   // eslint-disable-next-line no-restricted-syntax
-  primary_color_dark: '#000000',
+  primary_color_dark: '#0f766e',
   // eslint-disable-next-line no-restricted-syntax
   secondary_color: '#ffffff',
   // eslint-disable-next-line no-restricted-syntax

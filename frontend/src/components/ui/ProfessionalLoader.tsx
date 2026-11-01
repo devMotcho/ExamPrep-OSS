@@ -27,7 +27,7 @@ export const ProfessionalLoader: React.FC<ProfessionalLoaderProps> = ({
     >
       <div className="relative flex flex-col items-center max-w-sm text-center">
         {/* Glowing Background Aura */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 via-purple-500/20 to-indigo-500/30 rounded-full blur-2xl animate-pulse -z-10" />
+        <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/30 rounded-full blur-2xl animate-pulse -z-10" />
 
         {/* Logo Wrapper with Rotating Ring */}
         <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 mb-6">

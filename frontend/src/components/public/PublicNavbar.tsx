@@ -71,9 +71,9 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ isSticky = true, onM
 
           {/* Brand/Logo */}
           <Link to={`/${locale}`} className="flex items-center gap-2 sm:gap-3 rounded-xl group min-w-0 min-h-11">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center overflow-hidden shrink-0 shadow-md group-hover:scale-105 transition-transform duration-200">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-200 ${config.logo_url ? '' : 'bg-gradient-to-br from-primary to-primary/80 shadow-md'}`}>
               {config.logo_url ? (
-                <img src={config.logo_url} alt="" className="w-full h-full object-cover" />
+                <img src={config.logo_url} alt="" className="w-full h-full object-contain" />
               ) : (
                 <ClipboardCheck className="text-primary-foreground w-5 h-5" />
               )}
