@@ -88,6 +88,8 @@ Mail on port 465 now uses TLS from the start, and STARTTLS is required on other 
 
 New password registrations are only marked confirmed when `confirmation_code_enabled` is on. Accounts that already exist keep their state. See [architecture](architecture.md#authentication).
 
+The default primary colour is now teal, to match the new logo. If you never changed it, it updates by itself; a colour you chose stays.
+
 `GET /api/api/study-areas` now returns one page of summaries (`page`, `size`, `q`) instead of a full list, and `POST /api/auth/send-code` needs a `purpose`. Scripts using the API must follow. `Authorization: Bearer` is no longer accepted.
 
 ## Before you open registration

@@ -19,7 +19,7 @@ ExamPrep turns a question bank into timed mock exams, graded from 0 to 20, that 
 
 A teacher who wants one place for a class's question banks. A study group sharing a set before finals. A school that can't send student data to someone else's servers. You can run all of it on a small server you control, with every feature switched on and no accounts on our side.
 
-If you'd rather just study, the same app runs at **[escolhamultipla.pt](https://escolhamultipla.pt)**, with nothing to set up.
+If you'd rather just study, the same app runs at **[escolhamultipla.pt](https://escolhamultipla.pt)**, with nothing to set up. The name and logo of that hosted site aren't part of this project or its licence.
 
 ## What happens in one study session
 
@@ -35,7 +35,7 @@ If you'd rather just study, the same app runs at **[escolhamultipla.pt](https://
 
 **4. You see how close you are.** The readiness report counts unseen questions as zero and says so, because a percentage built only on what you've practised flatters you. It doesn't predict a grade. Set an exam date and the dashboard turns the remaining work into a daily plan.
 
-![A readiness report of 65 percent with accuracy per chapter](docs/images/readiness.png)
+![A readiness report of 64 percent with accuracy per chapter](docs/images/readiness.png)
 
 ## Start it in three commands
 
