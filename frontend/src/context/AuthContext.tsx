@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { authService } from '../features/auth/services/authService';
 import { useOnline } from '../lib/online';
+import { consumeOAuthCallback } from '../lib/oauthCallback';
 
 interface UserProfile {
   id: number;
@@ -25,54 +26,17 @@ const FOCUS_REFRESH_INTERVAL_MS = 60_000;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OAuth2 token storage helpers (localStorage, used when cookies cannot work
-// cross-site, e.g. frontend and API deployed on separate public-suffix domains).
-// Standard email/password login continues to use httpOnly cookies exclusively.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function parseOAuthHash(): { accessToken: string; refreshToken: string; expiresIn: number } | null {
-  try {
-    const hash = window.location.hash.slice(1); // strip leading '#'
-    if (!hash) return null;
-    const params = new URLSearchParams(hash);
-    const accessToken  = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const expiresIn    = Number(params.get('expires_in') ?? '0');
-    if (accessToken && refreshToken) {
-      return { accessToken, refreshToken, expiresIn };
-    }
-  } catch {
-    // malformed hash — ignore
-  }
-  return null;
-}
-
-function storeOAuthTokens(accessToken: string, refreshToken: string, expiresIn: number) {
-  localStorage.setItem('oauth_access_token', accessToken);
-  localStorage.setItem('oauth_refresh_token', refreshToken);
-  localStorage.setItem('oauth_token_expires_at', String(Date.now() + expiresIn * 1000));
-}
-
-function clearOAuthTokens() {
-  localStorage.removeItem('oauth_access_token');
-  localStorage.removeItem('oauth_refresh_token');
-  localStorage.removeItem('oauth_token_expires_at');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+// Read before the first render, and before the router sees the address.
+let pendingOAuthCode = consumeOAuthCallback();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Determine initial state synchronously:
-  // - True if localStorage flag is set (standard login OR previous OAuth session).
-  // - The real source of truth is always validated on mount via /auth/me.
-  const oauthHashOnLoad = useRef(parseOAuthHash());
-  const hasOAuthHashOnLoad = oauthHashOnLoad.current !== null;
+  // Determine initial state synchronously: the flag only decides what to show first. The real source of truth
+  // is the HttpOnly session cookie, checked on mount via /auth/me.
+  const oauthCodeOnLoad = useRef(pendingOAuthCode !== null);
+  const hasOAuthCodeOnLoad = oauthCodeOnLoad.current;
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    // If there is an OAuth hash fragment on the URL, we know auth just succeeded —
-    // start as false and let the mount effect establish the session.
-    if (hasOAuthHashOnLoad) return false;
+    if (hasOAuthCodeOnLoad) return false;
     return localStorage.getItem('isAuthenticated') === 'true';
   });
   const [role, setRole]   = useState<string | null>(null);
@@ -80,22 +44,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Hold loading=true whenever we know we need to do an async auth check on mount,
   // so PrivateRoute never flashes a redirect before the check completes.
   const [loading, setLoading] = useState<boolean>(() => {
-    return hasOAuthHashOnLoad || localStorage.getItem('isAuthenticated') === 'true';
+    return hasOAuthCodeOnLoad || localStorage.getItem('isAuthenticated') === 'true';
   });
 
-  // ── Mount effect: handle OAuth2 hash fragment handoff ──────────────────────
+  // ── Mount effect: finish a social sign-in ──────────────────────────────────
   useEffect(() => {
-    const oauthTokens = oauthHashOnLoad.current;
-    if (!oauthTokens) return;
+    const code = pendingOAuthCode;
+    if (!code) return;
+    pendingOAuthCode = null; // Single use: a second attempt could only fail.
 
-    // Immediately clean the fragment from the URL bar (tokens must not sit in history)
-    window.history.replaceState(null, '', window.location.pathname);
-
-    // Persist tokens so the Axios request interceptor can inject them
-    storeOAuthTokens(oauthTokens.accessToken, oauthTokens.refreshToken, oauthTokens.expiresIn);
-
-    // Now call /auth/me — the Axios interceptor will attach Authorization: Bearer automatically
-    authService.me()
+    authService.exchangeOAuthCode(code)
+      .then(() => authService.me())
       .then((res) => {
         localStorage.setItem('isAuthenticated', 'true');
         setRole(res.data.role);
@@ -103,25 +62,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
       })
       .catch(() => {
-        // Hash tokens were invalid — clean up entirely
-        clearOAuthTokens();
         localStorage.removeItem('isAuthenticated');
         setIsAuthenticated(false);
       })
       .finally(() => {
         setLoading(false);
       });
-   
   }, []);
 
   // ── Effect: fetch user profile when isAuthenticated flips to true ──────────
   useEffect(() => {
-    // Skip if we are currently in the middle of the OAuth hash mount effect
-    if (hasOAuthHashOnLoad) return;
-
     if (isAuthenticated) {
       if (user) {
-        // Profile already loaded (e.g. after login() call) — just unset loading
+        // Profile already loaded (e.g. after login() or the sign-in above) — just unset loading
         Promise.resolve().then(() => setLoading(false));
         return;
       }
@@ -137,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         })
         .finally(() => setLoading(false));
-    } else {
+    } else if (!hasOAuthCodeOnLoad) {
       Promise.resolve().then(() => setLoading(false));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ── Opened without a connection: fetch the profile as soon as it returns ───
   const online = useOnline();
   useEffect(() => {
-    if (!online || !isAuthenticated || user || hasOAuthHashOnLoad) return;
+    if (!online || !isAuthenticated || user) return;
     authService.me()
       .then((res) => {
         setRole(res.data.role);
@@ -160,7 +113,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const handleAuthLogout = () => {
       localStorage.removeItem('isAuthenticated');
-      clearOAuthTokens();
       setIsAuthenticated(false);
       setRole(null);
       setUser(null);
@@ -218,7 +170,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Logout failed', e);
     } finally {
       localStorage.removeItem('isAuthenticated');
-      clearOAuthTokens();
       setIsAuthenticated(false);
       setRole(null);
       setUser(null);

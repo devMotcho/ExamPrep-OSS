@@ -54,7 +54,7 @@ export const Register: React.FC = () => {
     }
     setSendingCode(true);
     try {
-      await authService.sendCode(form.email);
+      await authService.sendCode(form.email, 'REGISTER');
       toast({ type: 'success', message: t('auth.register.codeSent', 'Verification code sent to your email.') });
       setCountdown(60);
       return true;

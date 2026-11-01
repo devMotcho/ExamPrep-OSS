@@ -30,7 +30,7 @@ class PasswordResetTest {
     private final AuthService authService = new AuthService(users, tokens, mock(JwtService.class), encoder, mock(SiteConfigRepository.class));
     private final ConfirmationCodeService codes = mock(ConfirmationCodeService.class);
     private final AuthController controller = new AuthController(authService, mock(UserService.class), mock(JwtService.class),
-            mock(HttpServletRequest.class), mock(LoginLockoutService.class), mock(ClientIpResolver.class), codes, encoder);
+            mock(HttpServletRequest.class), mock(LoginLockoutService.class), mock(ClientIpResolver.class), codes, encoder, mock(AuthCookies.class), mock(OAuthExchangeService.class));
 
     private static final Map<String, String> RESET = Map.of("email", "a@example.com", "code", "123456", "newPassword", "a-new-password");
 
@@ -71,11 +71,19 @@ class PasswordResetTest {
 
     @Test
     void sendCodeResponseDoesNotDependOnTheAddress() {
-        ResponseEntity<?> first = controller.sendCode(Map.of("email", "a@example.com"));
-        ResponseEntity<?> second = controller.sendCode(Map.of("email", "nobody@example.com"));
+        ResponseEntity<?> first = controller.sendCode(Map.of("email", "a@example.com", "purpose", "PASSWORD_RESET"));
+        ResponseEntity<?> second = controller.sendCode(Map.of("email", "nobody@example.com", "purpose", "PASSWORD_RESET"));
 
+        assertEquals(200, first.getStatusCode().value());
         assertEquals(first.getStatusCode(), second.getStatusCode());
         assertEquals(first.getBody(), second.getBody());
         verify(users, never()).findByEmail(any());
+    }
+
+    @Test
+    void sendCodeNeedsAPurposeAndAPlausibleAddress() {
+        assertEquals(400, controller.sendCode(Map.of("email", "a@example.com")).getStatusCode().value());
+        assertEquals(400, controller.sendCode(Map.of("email", "a@example.com", "purpose", "NOPE")).getStatusCode().value());
+        assertEquals(400, controller.sendCode(Map.of("email", "not an address", "purpose", "CONTACT")).getStatusCode().value());
     }
 }

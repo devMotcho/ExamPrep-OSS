@@ -1,6 +1,5 @@
 package com.exam_prep.api.user.auth;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -9,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.exam_prep.api.entity.CodePurpose;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.security.ClientIpResolver;
 import com.exam_prep.api.service.ConfirmationCodeService;
@@ -37,6 +37,8 @@ public class AuthController {
     private final ClientIpResolver clientIpResolver;
     private final ConfirmationCodeService confirmationCodeService;
     private final PasswordEncoder passwordEncoder;
+    private final AuthCookies authCookies;
+    private final OAuthExchangeService oAuthExchangeService;
 
     @Value("${app.jwt.access-expiration-ms}")
     private long jwtAccessExpirationMs;
@@ -44,14 +46,8 @@ public class AuthController {
     @Value("${app.jwt.refresh-expiration-ms}")
     private long jwtRefreshExpirationMs;
 
-    @Value("${app.cookie.same-site:Lax}")
-    private String cookieSameSite;
-
     @Value("${server.servlet.session.cookie.same-site:Lax}")
     private String sessionCookieSameSite;
-
-    @Value("${app.cookie.secure:false}")
-    private boolean cookieSecure;
 
     @PostMapping("/send-code")
     public ResponseEntity<?> sendCode(@RequestBody Map<String, String> body) {
@@ -59,7 +55,16 @@ public class AuthController {
         if (email == null || email.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Email is required."));
         }
-        confirmationCodeService.sendConfirmationCode(email);
+        if (email.length() > 255 || !email.trim().matches("[^@\\s]+@[^@\\s]+")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Please enter a valid email address."));
+        }
+        CodePurpose purpose;
+        try {
+            purpose = CodePurpose.valueOf(String.valueOf(body.get("purpose")));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "A valid purpose is required."));
+        }
+        confirmationCodeService.sendConfirmationCode(email, purpose);
         return ResponseEntity.ok(Map.of("message", NEUTRAL_CODE_SENT));
     }
 
@@ -77,7 +82,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "New password must be at least 8 characters."));
         }
 
-        confirmationCodeService.validateConfirmationCode(email, code);
+        confirmationCodeService.validateConfirmationCode(email, code, CodePurpose.PASSWORD_RESET);
         authService.resetPassword(email, newPassword);
 
         return ResponseEntity.ok(Map.of("message", NEUTRAL_PASSWORD_RESET));
@@ -86,7 +91,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest requestBody) {
         if (confirmationCodeService.isConfirmationCodeEnabled()) {
-            confirmationCodeService.validateConfirmationCode(requestBody.getEmail(), requestBody.getCode());
+            confirmationCodeService.validateConfirmationCode(requestBody.getEmail(), requestBody.getCode(), CodePurpose.REGISTER);
         }
         authService.register(requestBody);
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
@@ -134,82 +139,56 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     @RequestBody(required = false) Map<String, String> body) {
-        // Cookie path (standard email/password login)
-        String refreshTokenStr = null;
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("refresh_token".equals(cookie.getName())) {
-                    refreshTokenStr = cookie.getValue();
-                }
-            }
-        }
-
-        // Bearer path (OAuth2 / cross-domain — token sent in request body)
-        boolean isBearerPath = false;
-        if (refreshTokenStr == null && body != null) {
-            refreshTokenStr = body.get("refresh_token");
-            if (refreshTokenStr != null) {
-                isBearerPath = true;
-            }
-        }
-
-        if (refreshTokenStr == null) {
+    public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String presented = authCookies.read(request, AuthCookies.REFRESH);
+        if (presented == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Refresh token missing"));
         }
 
-        RefreshTokenEntity refreshTokenEntity = authService.verifyRefreshToken(refreshTokenStr);
-        UserEntity user = refreshTokenEntity.getUser();
+        AuthService.Rotation rotation = authService.rotateRefreshToken(presented);
+        UserEntity user = rotation.user();
+        String newAccessToken = jwtService.generateAccessToken(user.getEmail(), user.getRole());
 
-        // Rotate refresh token
-        String newRefreshToken = authService.rotateRefreshToken(refreshTokenEntity);
-        String newAccessToken  = jwtService.generateAccessToken(user.getEmail(), user.getRole());
-
-        if (isBearerPath) {
-            // Return new tokens in the response body so the frontend can update localStorage
-            return ResponseEntity.ok(Map.of(
-                    "access_token",  newAccessToken,
-                    "refresh_token", newRefreshToken,
-                    "expires_in",    jwtAccessExpirationMs / 1000
-            ));
-        }
-
-        // Cookie path — set httpOnly cookies as usual
-        addCookie(response, "access_token",  newAccessToken,  jwtAccessExpirationMs);
-        addCookie(response, "refresh_token", newRefreshToken, jwtRefreshExpirationMs);
+        authCookies.set(request, response, AuthCookies.ACCESS, newAccessToken, jwtAccessExpirationMs / 1000);
+        authCookies.set(request, response, AuthCookies.REFRESH, rotation.refreshToken(), jwtRefreshExpirationMs / 1000);
         return ResponseEntity.ok(Map.of("message", "Token refreshed successfully"));
     }
 
+    /** Ends a social sign-in: turns the code from the redirect into session cookies, in this browser only. */
+    @PostMapping("/oauth2/exchange")
+    public ResponseEntity<?> exchangeOAuthCode(HttpServletRequest request, HttpServletResponse response,
+                                               @RequestBody Map<String, String> body) {
+        String binding = authCookies.read(request, AuthCookies.OAUTH_BINDING);
+        authCookies.clear(request, response, AuthCookies.OAUTH_BINDING);
+
+        UserEntity user = oAuthExchangeService.consume(body.get("code"), binding)
+                .map(userService::findById)
+                .filter(UserEntity::isActive)
+                .orElseThrow(() -> new AppException("This sign-in link is not valid anymore.", HttpStatus.UNAUTHORIZED));
+
+        setTokens(response, user);
+        return ResponseEntity.ok(Map.of("message", "Login successful"));
+    }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        authService.revokeSession(authCookies.read(request, AuthCookies.REFRESH));
+
         // Invalidate the session if it exists to destroy any Spring Security context cached in the HttpSession
         jakarta.servlet.http.HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
 
-        clearCookie(response, "access_token");
-        clearCookie(response, "refresh_token");
-
-        // Clear the JSESSIONID cookie as well, with the attributes it was set with
-        boolean secure = isSecureCookie();
-        String secureFlag = secure ? " Secure;" : "";
-        String partitionedFlag = secure ? " Partitioned;" : "";
-        response.addHeader("Set-Cookie", String.format("JSESSIONID=; Max-Age=0; Path=/; HttpOnly;%s%s SameSite=%s",
-                secureFlag, partitionedFlag, sessionCookieSameSite));
+        authCookies.clear(request, response, AuthCookies.ACCESS);
+        authCookies.clear(request, response, AuthCookies.REFRESH);
+        authCookies.clearSession(request, response, sessionCookieSameSite);
 
         return ResponseEntity.ok(Map.of("message", "Logged out"));
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> me(java.security.Principal principal) {
-        // JwtAuthFilter populates the Spring Security context for BOTH auth paths:
-        //   • Cookie path  (standard login)  — reads access_token httpOnly cookie
-        //   • Bearer path  (OAuth2 login)     — reads Authorization: Bearer header
-        // Using Principal here means this endpoint works identically for both.
         if (principal == null) {
             return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
         }
@@ -239,7 +218,7 @@ public class AuthController {
         String email = principal.getName();
         String code = body.get("code");
 
-        confirmationCodeService.validateConfirmationCode(email, code);
+        confirmationCodeService.validateConfirmationCode(email, code, CodePurpose.EMAIL_CONFIRMATION);
         userService.confirmEmail(email);
 
         return ResponseEntity.ok(Map.of("message", "Email confirmed successfully."));
@@ -247,6 +226,7 @@ public class AuthController {
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
+            HttpServletResponse response,
             java.security.Principal principal,
             @RequestBody Map<String, String> body) {
         if (principal == null) {
@@ -273,11 +253,15 @@ public class AuthController {
 
         if (confirmationCodeService.isConfirmationCodeEnabled()) {
             String code = body.get("code");
-            confirmationCodeService.validateConfirmationCode(user.getEmail(), code);
+            confirmationCodeService.validateConfirmationCode(user.getEmail(), code, CodePurpose.PASSWORD_CHANGE);
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userService.save(user);
+
+        // Every other session ends; this one continues on a new token.
+        authService.revokeAllSessions(user);
+        setTokens(response, user);
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
     }
@@ -286,75 +270,7 @@ public class AuthController {
         String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getRole());
         String refreshToken = authService.createRefreshToken(user);
 
-        addCookie(response, "access_token", accessToken, jwtAccessExpirationMs);
-        addCookie(response, "refresh_token", refreshToken, jwtRefreshExpirationMs);
-    }
-
-    private boolean isSecureCookie() {
-        if (cookieSecure) {
-            return true;
-        }
-        if (request == null) {
-            return false;
-        }
-        if (request.isSecure()) {
-            return true;
-        }
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        if ("https".equalsIgnoreCase(forwardedProto)) {
-            return true;
-        }
-
-        String serverName = request.getServerName();
-        if (serverName == null) {
-            return true;
-        }
-
-        // Local development hostnames
-        if (serverName.equals("localhost") || 
-            serverName.equals("127.0.0.1") || 
-            serverName.equals("0.0.0.0") || 
-            serverName.endsWith(".local")) {
-            return false;
-        }
-
-        // Private local IP ranges (RFC 1918)
-        if (serverName.startsWith("192.168.") || serverName.startsWith("10.")) {
-            return false;
-        }
-
-        if (serverName.startsWith("172.")) {
-            try {
-                String[] parts = serverName.split("\\.");
-                if (parts.length >= 2) {
-                    int secondOctet = Integer.parseInt(parts[1]);
-                    if (secondOctet >= 16 && secondOctet <= 31) {
-                        return false;
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore parsing errors, default to secure
-            }
-        }
-
-        // For all public domains in production, we must enforce Secure cookies
-        return true;
-    }
-
-    private void addCookie(HttpServletResponse response, String name, String value, long maxAgeMs) {
-        // Add SameSite attribute via header because standard Cookie class doesn't support it well in older Java versions
-        boolean secure = isSecureCookie();
-        String secureFlag      = secure ? " Secure;" : "";
-        String partitionedFlag = secure ? " Partitioned;" : "";
-        response.addHeader("Set-Cookie", String.format("%s=%s; Max-Age=%d; Path=/; HttpOnly;%s%s SameSite=%s",
-                name, value, maxAgeMs / 1000, secureFlag, partitionedFlag, cookieSameSite));
-    }
-
-    private void clearCookie(HttpServletResponse response, String name) {
-        boolean secure = isSecureCookie();
-        String secureFlag      = secure ? " Secure;" : "";
-        String partitionedFlag = secure ? " Partitioned;" : "";
-        response.addHeader("Set-Cookie", String.format("%s=; Max-Age=0; Path=/; HttpOnly;%s%s SameSite=%s",
-                name, secureFlag, partitionedFlag, cookieSameSite));
+        authCookies.set(request, response, AuthCookies.ACCESS, accessToken, jwtAccessExpirationMs / 1000);
+        authCookies.set(request, response, AuthCookies.REFRESH, refreshToken, jwtRefreshExpirationMs / 1000);
     }
 }

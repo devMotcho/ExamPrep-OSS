@@ -80,6 +80,8 @@ app:
   dev:
     email: ${DEFAULT_DEV_EMAIL:}
     password: ${DEFAULT_DEV_PASSWORD:}
+  confirmation:
+    max-sends-per-hour: ${CONFIRMATION_CODE_SENDS_PER_HOUR:5}
   rate-limit:
     login-limit: 5
     register-limit: 3

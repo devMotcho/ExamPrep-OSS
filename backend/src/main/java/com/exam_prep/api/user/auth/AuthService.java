@@ -3,6 +3,7 @@ package com.exam_prep.api.user.auth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import com.exam_prep.api.repository.SiteConfigRepository;
 import com.exam_prep.api.user.UserEntity;
 import com.exam_prep.api.user.UserRepository;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -25,6 +27,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final SiteConfigRepository siteConfigRepository;
+
+    /** Long enough for another tab's simultaneous refresh or a client retry, too short to be useful to a thief. */
+    static final Duration ROTATION_GRACE = Duration.ofSeconds(10);
+    private static final String ROTATED_JUST_NOW = "Refresh token was just rotated";
 
     @Value("${app.jwt.refresh-expiration-ms}")
     private long jwtRefreshExpirationMs;
@@ -95,45 +101,80 @@ public class AuthService {
         });
     }
 
+    /** A new sign-in: the start of a new token family. */
     @Transactional
     public String createRefreshToken(UserEntity user) {
-        String token = UUID.randomUUID().toString();
-        RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
-                .user(user)
-                .token(token)
-                .expiryDate(ZonedDateTime.now().plusNanos(jwtRefreshExpirationMs * 1_000_000))
-                .build();
+        return issueRefreshToken(user, UUID.randomUUID());
+    }
 
-        refreshTokenRepository.save(refreshToken);
+    private String issueRefreshToken(UserEntity user, UUID familyId) {
+        String token = TokenHash.newToken();
+        refreshTokenRepository.save(RefreshTokenEntity.builder()
+                .user(user)
+                .tokenHash(TokenHash.sha256(token))
+                .familyId(familyId)
+                .expiryDate(ZonedDateTime.now().plusNanos(jwtRefreshExpirationMs * 1_000_000))
+                .build());
         return token;
     }
 
-    @Transactional
-    public RefreshTokenEntity verifyRefreshToken(String token) {
-        RefreshTokenEntity refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new AppException("Invalid refresh token", HttpStatus.UNAUTHORIZED));
+    public record Rotation(UserEntity user, String refreshToken) {}
 
-        if (refreshToken.getExpiryDate().isBefore(ZonedDateTime.now())) {
-            refreshTokenRepository.delete(refreshToken);
+    /**
+     * Exchanges a refresh token for its successor. A token that was already exchanged means two parties hold it,
+     * so the family ends and everyone holding it signs in again; the exception is a repeat within a few seconds,
+     * which is another tab or a retry and only gets a 409. Keeps its work when throwing, or that revocation
+     * would be rolled back.
+     */
+    @Transactional(noRollbackFor = AppException.class)
+    public Rotation rotateRefreshToken(String presented) {
+        RefreshTokenEntity token = refreshTokenRepository.findByTokenHash(TokenHash.sha256(presented))
+                .orElseThrow(() -> new AppException("Invalid refresh token", HttpStatus.UNAUTHORIZED));
+        ZonedDateTime now = ZonedDateTime.now();
+
+        if (token.getExpiryDate().isBefore(now)) {
+            refreshTokenRepository.delete(token);
             throw new AppException("Refresh token expired", HttpStatus.UNAUTHORIZED);
         }
 
-        if (refreshToken.isRevoked()) {
+        if (token.isRevoked()) {
+            if (token.getRotatedAt() != null && token.getRotatedAt().isAfter(now.minus(ROTATION_GRACE))) {
+                throw new AppException(ROTATED_JUST_NOW, HttpStatus.CONFLICT);
+            }
+            refreshTokenRepository.revokeFamily(token.getFamilyId());
             throw new AppException("Refresh token revoked", HttpStatus.UNAUTHORIZED);
         }
 
-        if (!refreshToken.getUser().isActive()) {
+        UserEntity user = token.getUser();
+        if (!user.isActive()) {
             throw new AppException("Account is disabled", HttpStatus.FORBIDDEN);
         }
 
-        return refreshToken;
+        if (refreshTokenRepository.markRotated(token.getId(), now) == 0) {
+            throw new AppException(ROTATED_JUST_NOW, HttpStatus.CONFLICT);
+        }
+        return new Rotation(user, issueRefreshToken(user, token.getFamilyId()));
     }
 
+    /** Ends the session the token belongs to. An unknown token is fine: the outcome is the same. */
     @Transactional
-    public String rotateRefreshToken(RefreshTokenEntity oldToken) {
-        UserEntity user = oldToken.getUser();
-        refreshTokenRepository.delete(oldToken);
-        return createRefreshToken(user);
+    public void revokeSession(String presented) {
+        if (presented == null || presented.isBlank()) {
+            return;
+        }
+        refreshTokenRepository.findByTokenHash(TokenHash.sha256(presented))
+                .ifPresent(token -> refreshTokenRepository.revokeFamily(token.getFamilyId()));
+    }
+
+    /** Signs the user out everywhere. Access tokens already issued last until they expire. */
+    public void revokeAllSessions(UserEntity user) {
+        refreshTokenRepository.revokeAllForUser(user);
+    }
+
+    @Scheduled(cron = "0 45 3 * * *", zone = "UTC")
+    @Transactional
+    public void deleteExpiredTokens() {
+        refreshTokenRepository.deleteExpired(ZonedDateTime.now());
     }
 
     /**
@@ -200,7 +241,7 @@ public class AuthService {
                 .password("OAUTH_" + provider.toUpperCase()) // sentinel — no local password
                 .role("ROLE_USER")
                 .isActive(true)
-                .isConfirmed(true)
+                .isConfirmed(emailVerified) // Only the provider's word confirms an address.
                 .oauthProvider(provider)
                 .oauthSubject(subject)
                 .build();

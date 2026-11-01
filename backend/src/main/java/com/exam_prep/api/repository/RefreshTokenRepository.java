@@ -10,14 +10,26 @@ import org.springframework.stereotype.Repository;
 import com.exam_prep.api.user.UserEntity;
 import com.exam_prep.api.user.auth.RefreshTokenEntity;
 
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity, UUID> {
-    Optional<RefreshTokenEntity> findByToken(String token);
-    void deleteByUser(UserEntity user);
-    void deleteByToken(String token);
+    Optional<RefreshTokenEntity> findByTokenHash(String tokenHash);
+
+    /** One atomic statement: of two simultaneous refreshes, only one gets to rotate a token. */
+    @Modifying
+    @Query("update RefreshTokenEntity t set t.revoked = true, t.rotatedAt = :now where t.id = :id and t.revoked = false")
+    int markRotated(@Param("id") UUID id, @Param("now") ZonedDateTime now);
+
+    @Modifying
+    @Query("delete from RefreshTokenEntity t where t.familyId = :familyId")
+    int revokeFamily(@Param("familyId") UUID familyId);
+
+    @Modifying
+    @Query("delete from RefreshTokenEntity t where t.expiryDate < :now")
+    int deleteExpired(@Param("now") ZonedDateTime now);
 
     /** A bulk delete, so a refresh rotating one of these tokens at the same moment cannot make it fail. */
     @Modifying

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.exam_prep.api.entity.CodePurpose;
 import com.exam_prep.api.entity.ContactMessageEntity;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.notification.NotificationDispatcher;
@@ -60,7 +61,7 @@ public class ContactService {
 
         // Check if confirmation code is enabled
         if (confirmationCodeService.isConfirmationCodeEnabled()) {
-            confirmationCodeService.validateConfirmationCode(request.getEmail(), request.getCode());
+            confirmationCodeService.validateConfirmationCode(request.getEmail(), request.getCode(), CodePurpose.CONTACT);
         }
 
         // 1. IP-based rate limiting (max 3 requests per IP per hour)

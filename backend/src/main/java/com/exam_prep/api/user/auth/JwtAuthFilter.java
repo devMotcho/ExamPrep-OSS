@@ -17,17 +17,7 @@ import com.exam_prep.api.user.UserRepository;
 import java.io.IOException;
 import java.util.Collections;
 
-/**
- * Extracts the JWT access token from either:
- * <ol>
- *   <li>The {@code access_token} httpOnly cookie — used by the standard email/password login path.</li>
- *   <li>The {@code Authorization: Bearer <token>} request header — used by the OAuth2 login path
- *       where the frontend stores the token in {@code localStorage} and injects it on every request,
- *       because cross-site httpOnly cookies cannot work when the frontend and backend are on different
- *       registrable domains.</li>
- * </ol>
- * The cookie is checked first so the standard path retains its existing behaviour unchanged.
- */
+/** Authenticates a request from the {@code access_token} HttpOnly cookie, the only place a token is accepted. */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -42,10 +32,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = extractFromCookie(request);
-
-        if (token == null) {
-            token = extractFromBearerHeader(request);
-        }
 
         if (token != null && jwtService.validateToken(token)) {
             String username = jwtService.extractUsername(token);
@@ -75,14 +61,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if ("access_token".equals(cookie.getName())) {
                 return cookie.getValue();
             }
-        }
-        return null;
-    }
-
-    private String extractFromBearerHeader(HttpServletRequest request) {
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7);
         }
         return null;
     }

@@ -65,7 +65,7 @@ export const Dashboard: React.FC = () => {
     if (!user?.email) return;
     setSendingCode(true);
     try {
-      await authService.sendCode(user.email);
+      await authService.sendCode(user.email, 'EMAIL_CONFIRMATION');
       toast({ type: 'success', message: t('dashboard.toast.codeSent', 'Verification code sent to your email.') });
       setCountdown(60);
     } catch (err: any) {

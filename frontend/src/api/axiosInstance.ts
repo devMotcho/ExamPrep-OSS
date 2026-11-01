@@ -3,26 +3,8 @@ import { isNetworkError, reportNetworkFailure } from '@/lib/online';
 
 export const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // Required for httpOnly cookie path (standard login)
+  withCredentials: true, // The session lives in HttpOnly cookies, on every sign-in path
   timeout: 15000, // Prevent infinite hangs
-});
-
-// ── Request interceptor — inject Bearer token when present ────────────────────
-//
-// The OAuth2 login path stores the access token in localStorage and uses
-// Authorization: Bearer headers instead of cookies, because cross-site
-// httpOnly cookies cannot be sent when the frontend and backend are on
-// separate public-suffix domains (e.g. frontend and API on separate hosting subdomains).
-//
-// The standard email/password login path continues to use httpOnly cookies
-// transparently — withCredentials: true handles that automatically.
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('oauth_access_token');
-  if (token) {
-    config.headers = config.headers ?? {};
-    config.headers['Authorization'] = `Bearer ${token}`;
-  }
-  return config;
 });
 
 // ── Response interceptor — transparent token refresh ─────────────────────────
@@ -42,6 +24,16 @@ const processQueue = (error: any) => {
     }
   });
   failedQueue = [];
+};
+
+/** Another tab refreshing at the same moment (409) has renewed the shared cookies, so this tab is fine too. */
+const refreshSession = async () => {
+  try {
+    await axiosInstance.post('/auth/refresh');
+  } catch (error: any) {
+    if (error?.response?.status !== 409) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 };
 
 axiosInstance.interceptors.response.use(
@@ -71,30 +63,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Try to refresh. Works for both paths:
-        //   • Cookie path  — refresh_token cookie is sent automatically via withCredentials
-        //   • Bearer path  — send stored refresh_token in the request body
-        const oauthRefreshToken = localStorage.getItem('oauth_refresh_token');
-
-        let refreshResponse;
-        if (oauthRefreshToken) {
-          // Bearer / OAuth2 path: send refresh token in body
-          refreshResponse = await axiosInstance.post('/auth/refresh', {
-            refresh_token: oauthRefreshToken,
-          });
-          // Backend returns new tokens in JSON body for the Bearer path
-          const { access_token, refresh_token, expires_in } = refreshResponse.data;
-          if (access_token) {
-            localStorage.setItem('oauth_access_token', access_token);
-            localStorage.setItem('oauth_token_expires_at', String(Date.now() + expires_in * 1000));
-          }
-          if (refresh_token) {
-            localStorage.setItem('oauth_refresh_token', refresh_token);
-          }
-        } else {
-          // Cookie path: refresh token sent automatically
-          await axiosInstance.post('/auth/refresh');
-        }
+        await refreshSession();
 
         processQueue(null);
         isRefreshing = false;
@@ -105,9 +74,6 @@ axiosInstance.interceptors.response.use(
 
         // Full session expiry — clear everything and signal logout
         localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('oauth_access_token');
-        localStorage.removeItem('oauth_refresh_token');
-        localStorage.removeItem('oauth_token_expires_at');
         window.dispatchEvent(new Event('auth-logout'));
 
         return Promise.reject(refreshError);

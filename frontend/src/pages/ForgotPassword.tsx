@@ -35,7 +35,7 @@ export default function ForgotPassword() {
     
     setLoading(true);
     try {
-      await authService.sendCode(email);
+      await authService.sendCode(email, 'PASSWORD_RESET');
       setStep(2);
     } catch {
       setError(t('auth.forgot.sendError', 'We could not send the code. Please try again.'));

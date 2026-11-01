@@ -1,6 +1,8 @@
 import { axiosInstance } from '@/api/axiosInstance';
 import type { LoginForm, RegisterForm } from '../types';
 
+export type CodePurpose = 'REGISTER' | 'PASSWORD_RESET' | 'PASSWORD_CHANGE' | 'EMAIL_CONFIRMATION' | 'CONTACT';
+
 export const authService = {
   login: (data: LoginForm) =>
     axiosInstance.post('/auth/login', data),
@@ -18,8 +20,11 @@ export const authService = {
   refresh: () =>
     axiosInstance.post('/auth/refresh'),
 
-  sendCode: (email: string) =>
-    axiosInstance.post('/auth/send-code', { email }),
+  sendCode: (email: string, purpose: CodePurpose) =>
+    axiosInstance.post('/auth/send-code', { email, purpose }),
+
+  exchangeOAuthCode: (code: string) =>
+    axiosInstance.post('/auth/oauth2/exchange', { code }),
 
   confirmEmail: (code: string) =>
     axiosInstance.post('/auth/confirm-email', { code }),

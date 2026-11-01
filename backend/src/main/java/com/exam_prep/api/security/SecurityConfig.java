@@ -53,6 +53,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // nginx sends this header, and only when the operator opts in (see docs/self-hosting.md).
+            .headers(headers -> headers.httpStrictTransportSecurity(hsts -> hsts.disable()))
             // CSRF disabled per requirements (managed by httpOnly cookies & SameSite)
             .csrf(AbstractHttpConfigurer::disable)
             // Prevent Spring Security from saving/restoring SecurityContext from HttpSession
@@ -111,7 +113,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowedHeaders(List.of("Content-Type", "X-Requested-With", "X-Retry"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

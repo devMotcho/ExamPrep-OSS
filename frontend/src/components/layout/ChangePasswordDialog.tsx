@@ -108,7 +108,7 @@ export const ChangePasswordDialog: React.FC<ChangePasswordDialogProps> = ({
 
     setSendingCode(true);
     try {
-      await authService.sendCode(user.email);
+      await authService.sendCode(user.email, 'PASSWORD_CHANGE');
       toast({ type: 'success', message: 'Verification code sent to your email.' });
       setCountdown(60);
       return true;

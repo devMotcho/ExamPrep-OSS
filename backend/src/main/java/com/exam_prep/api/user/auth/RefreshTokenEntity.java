@@ -24,8 +24,17 @@ public class RefreshTokenEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(nullable = false, unique = true)
-    private String token;
+    /** SHA-256 of the token. The token itself is only ever known to the browser. */
+    @Column(name = "token_hash", nullable = false, unique = true)
+    private String tokenHash;
+
+    /** All tokens descending from one sign-in. Reusing a rotated token ends the whole family. */
+    @Column(name = "family_id", nullable = false)
+    private UUID familyId;
+
+    /** When this token was exchanged for its successor. */
+    @Column(name = "rotated_at")
+    private ZonedDateTime rotatedAt;
 
     @Column(name = "expiry_date", nullable = false)
     private ZonedDateTime expiryDate;

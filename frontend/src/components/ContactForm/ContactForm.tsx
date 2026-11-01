@@ -59,7 +59,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({ metadata }) => {
     }
     setSendingCode(true);
     try {
-      await authService.sendCode(email);
+      await authService.sendCode(email, 'CONTACT');
       toast({ type: 'success', message: t('contact.success.codeSent', 'Verification code sent to your email.') });
       setCountdown(60);
       return true;
