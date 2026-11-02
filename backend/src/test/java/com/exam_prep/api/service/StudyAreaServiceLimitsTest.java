@@ -94,7 +94,7 @@ class StudyAreaServiceLimitsTest {
 
     @Test
     void aSummaryNeverShowsAnEmailInPlaceOfAName() {
-        StudyAreaSummaryDto summary = new StudyAreaSummaryDto(UUID.randomUUID(), "t", null, "  ", UUID.randomUUID(),
+        StudyAreaSummaryDto summary = new StudyAreaSummaryDto(UUID.randomUUID(), "t", null, "  ", null, UUID.randomUUID(),
                 ZonedDateTime.now(), Visibility.PUBLIC, 0, 0);
         assertNull(summary.getCreatedBy());
 
