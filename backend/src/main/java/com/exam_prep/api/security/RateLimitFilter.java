@@ -46,6 +46,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/auth/send-code", LimitClass.LOGIN,
             "/api/auth/confirm-email", LimitClass.LOGIN,
             "/api/auth/change-password", LimitClass.LOGIN,
+            "/api/auth/me/email", LimitClass.LOGIN,
             "/api/auth/oauth2/exchange", LimitClass.LOGIN,
             "/api/auth/register", LimitClass.REGISTER,
             "/api/contact", LimitClass.CONTACT,
@@ -129,6 +130,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     static LimitClass classify(String method, String route) {
+        if ("DELETE".equalsIgnoreCase(method) && "/api/auth/me".equals(route)) {
+            return LimitClass.LOGIN; // Checks the password, like a sign-in.
+        }
         return "POST".equalsIgnoreCase(method) ? SENSITIVE_POSTS.getOrDefault(route, LimitClass.DEFAULT) : LimitClass.DEFAULT;
     }
 

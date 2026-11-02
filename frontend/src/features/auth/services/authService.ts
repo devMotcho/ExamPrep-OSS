@@ -1,7 +1,7 @@
 import { axiosInstance } from '@/api/axiosInstance';
 import type { LoginForm, RegisterForm } from '../types';
 
-export type CodePurpose = 'REGISTER' | 'PASSWORD_RESET' | 'PASSWORD_CHANGE' | 'EMAIL_CONFIRMATION' | 'CONTACT';
+export type CodePurpose = 'REGISTER' | 'PASSWORD_RESET' | 'PASSWORD_CHANGE' | 'EMAIL_CONFIRMATION' | 'CONTACT' | 'EMAIL_CHANGE' | 'ACCOUNT_DELETION';
 
 export const authService = {
   login: (data: LoginForm) =>
@@ -14,7 +14,7 @@ export const authService = {
     axiosInstance.post('/auth/logout'),
 
   me: async () => {
-    return await axiosInstance.get<{ id: number; email: string; name: string; role: string; isActive: boolean; isConfirmed: boolean }>('/auth/me');
+    return await axiosInstance.get<{ id: number; email: string; name: string; publicName?: string | null; oauthProvider?: string | null; role: string; isActive: boolean; isConfirmed: boolean }>('/auth/me');
   },
 
   refresh: () =>
@@ -34,6 +34,18 @@ export const authService = {
 
   changePassword: (data: any) =>
     axiosInstance.post('/auth/change-password', data),
+
+  updateProfile: (data: { name?: string; publicName?: string }) =>
+    axiosInstance.patch<{ name: string; publicName: string }>('/auth/me', data),
+
+  changeEmail: (data: { newEmail: string; password: string; code?: string }) =>
+    axiosInstance.post<{ email: string }>('/auth/me/email', data),
+
+  exportData: () =>
+    axiosInstance.get<Blob>('/auth/me/export', { responseType: 'blob' }),
+
+  deleteAccount: (data: { password?: string; code?: string }) =>
+    axiosInstance.delete('/auth/me', { data }),
 
   logVisit: (deviceId: string) =>
     axiosInstance.post('/auth/telemetry/visit', { deviceId }),

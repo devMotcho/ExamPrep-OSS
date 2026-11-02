@@ -22,9 +22,10 @@ import { PublicFooter } from '../public/PublicFooter';
 import { notificationService } from '@/features/notifications/services/notificationService';
 import { PublicNavbar } from '../public/PublicNavbar';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Key, Newspaper, PenLine } from 'lucide-react';
+import { Key, Newspaper, PenLine, ShieldCheck } from 'lucide-react';
 import { useBlogPosts } from '@/components/blog/FeatureGuideLink';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { AccountDataDialog } from './AccountDataDialog';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 import { PageSkeleton } from '@/components/ui/PageSkeleton';
@@ -198,6 +199,7 @@ export const UserProfileDropdown: React.FC<{ rightOpen?: boolean; onCloseRight?:
   const isAdmin = role === 'ROLE_ADMIN' || role === 'ROLE_DEV';
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isAccountDataOpen, setIsAccountDataOpen] = useState(false);
 
   const fetchUnreadCount = useCallback(async () => {
     if (isAuthenticated && isAdmin) {
@@ -353,6 +355,16 @@ export const UserProfileDropdown: React.FC<{ rightOpen?: boolean; onCloseRight?:
                   <Key size={15} className="shrink-0 transition-colors text-muted-foreground" />
                   <span>{t('nav.changePassword', 'Change Password')}</span>
                 </button>
+                <button
+                  onClick={() => {
+                    if (onCloseRight) onCloseRight();
+                    setIsAccountDataOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-muted-foreground hover:bg-muted hover:text-foreground group mt-1"
+                >
+                  <ShieldCheck size={15} className="shrink-0 transition-colors text-muted-foreground" />
+                  <span>{t('nav.yourData', 'Your data')}</span>
+                </button>
               </div>
             )}
 
@@ -375,6 +387,10 @@ export const UserProfileDropdown: React.FC<{ rightOpen?: boolean; onCloseRight?:
       <ChangePasswordDialog
         isOpen={isChangePasswordOpen}
         onOpenChange={setIsChangePasswordOpen}
+      />
+      <AccountDataDialog
+        isOpen={isAccountDataOpen}
+        onOpenChange={setIsAccountDataOpen}
       />
     </>
   );

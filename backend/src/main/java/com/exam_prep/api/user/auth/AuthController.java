@@ -202,6 +202,8 @@ public class AuthController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
+                .publicName(user.getPublicName())
+                .oauthProvider(user.getOauthProvider())
                 .role(user.getRole())
                 .isActive(user.isActive())
                 .isConfirmed(user.isConfirmed())
