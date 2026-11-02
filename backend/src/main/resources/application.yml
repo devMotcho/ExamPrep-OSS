@@ -95,6 +95,9 @@ app:
     total-limit: ${RATE_LIMIT_TOTAL:600}
   # Per user, for gallery images and question imports. 0 turns a limit off. The multipart limit above still
   # caps every file at 50MB. Blog media (admins only) and AI PDFs (their own 32MB limit and quota) are separate.
+  retention:
+    # Accounts unused for 24 months are deleted, after an email warning a month before (see InactiveAccountJob).
+    delete-inactive-accounts: ${DELETE_INACTIVE_ACCOUNTS:true}
   upload:
     max-mb: ${MAX_UPLOAD_MB:10}
     max-per-day: ${MAX_UPLOADS_PER_DAY:100}

@@ -5,6 +5,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.exam_prep.api.user.lockout.LoginLockoutService;
+
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -63,7 +65,8 @@ public class AccountDataExporter {
                 SELECT created_at, expiry_date, revoked, rotated_at FROM refresh_tokens WHERE user_id = ? ORDER BY created_at""", userId));
         data.put("contactMessages", rows("SELECT * FROM contact_messages WHERE lower(email) = ? ORDER BY created_at", mail));
         data.put("failedLogins", rows("""
-                SELECT ip_address, failed_attempts, created_at, updated_at FROM login_lockouts WHERE lower(username) = ?""", mail));
+                SELECT ip_address, failed_attempts, created_at, updated_at FROM login_lockouts WHERE username = ?""",
+                LoginLockoutService.hashUsername(mail)));
         data.put("devices", rows("SELECT * FROM device_telemetry WHERE user_id = ?", userId));
         return data;
     }

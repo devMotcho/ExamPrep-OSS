@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.service.S3Service;
+import com.exam_prep.api.user.lockout.LoginLockoutService;
 
 import java.util.List;
 import java.util.Locale;
@@ -75,7 +76,7 @@ public class AccountDeletionService {
         jdbcTemplate.update("UPDATE ai_generation_jobs SET original_filename = NULL WHERE user_id = ?", userId);
         jdbcTemplate.update("DELETE FROM device_telemetry WHERE user_id = ?", userId);
         jdbcTemplate.update("DELETE FROM contact_messages WHERE lower(email) = ?", email);
-        jdbcTemplate.update("DELETE FROM login_lockouts WHERE lower(username) = ?", email);
+        jdbcTemplate.update("DELETE FROM login_lockouts WHERE username = ?", LoginLockoutService.hashUsername(email));
         jdbcTemplate.update("DELETE FROM confirmation_codes WHERE lower(email) = ?", email);
         jdbcTemplate.update("DELETE FROM confirmation_code_sends WHERE lower(email) = ?", email);
 
@@ -85,6 +86,15 @@ public class AccountDeletionService {
         afterCommit(() -> imageKeys.forEach(s3Service::deleteFile));
         log.info("Deleted account {}: {} areas and {} questions moved to the community account, {} images kept, {} deleted.",
                 userId, sharedAreas, sharedQuestions, keptImages, imageKeys.size());
+    }
+
+    /**
+     * After an email change, the person's contact messages follow the new address, so the export and a later deletion
+     * still find them. Lockouts, codes and send counters under the old address expire on their own.
+     */
+    public void moveEmailKeyedRows(String oldEmail, String newEmail) {
+        jdbcTemplate.update("UPDATE contact_messages SET email = ? WHERE lower(email) = ? AND char_length(?) <= 100",
+                newEmail, oldEmail.trim().toLowerCase(Locale.ROOT), newEmail);
     }
 
     private static void afterCommit(Runnable action) {

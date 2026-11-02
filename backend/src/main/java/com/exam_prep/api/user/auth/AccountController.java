@@ -122,11 +122,13 @@ public class AccountController {
             confirmationCodeService.validateConfirmationCode(newEmail, body.get("code"), CodePurpose.EMAIL_CHANGE);
         }
 
+        String oldEmail = user.getEmail();
         user.setEmail(newEmail);
         if (codeChecked) {
             user.setConfirmed(true);
         }
         userRepository.save(user);
+        accountDeletionService.moveEmailKeyedRows(oldEmail, newEmail);
 
         authService.revokeAllSessions(user);
         authCookies.set(request, response, AuthCookies.ACCESS,

@@ -99,6 +99,16 @@ An existing account is linked only when the provider confirms the email is verif
 | `RATE_LIMIT_DEFAULT` | `120` | Requests per minute per client to one route |
 | `RATE_LIMIT_TOTAL` | `600` | Requests per minute per client overall. Raise both if many people share one address, such as a school |
 
+## Data retention
+
+A nightly job removes failed-login records after 30 days, contact messages after 12 months and AI job records after 90 days. Failed-login records keep only a hash of the email that was tried, and contact messages no IP address.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DELETE_INACTIVE_ACCOUNTS` | `true` | Deletes accounts unused for 24 months. The owner gets an email a month before, and signing in again cancels it. Without working email nobody is warned, so nothing is deleted. Staff accounts are never deleted |
+
+Each user can download, correct and delete their own data under **Your data** in the account menu. Study areas other people still use, and questions in other people's areas, then move to a built-in "Community" account instead of disappearing.
+
 ## Web container
 
 | Variable | Default | Notes |

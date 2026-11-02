@@ -4,6 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -13,7 +18,21 @@ public class LoginLockoutService {
     private final LoginLockoutRepository loginLockoutRepository;
 
     private String cleanUsername(String username) {
-        return username == null ? "" : username.trim().toLowerCase();
+        return hashUsername(username);
+    }
+
+    /**
+     * Only a hash of the attempted email is kept: enough to see repeated attempts on one account, or to find an
+     * account's rows when it is deleted, without storing the address. Matches V8, which converted older rows.
+     */
+    public static String hashUsername(String username) {
+        String clean = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(clean.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +62,7 @@ public class LoginLockoutService {
                         .build());
 
         entity.setFailedAttempts(entity.getFailedAttempts() + 1);
-        entity.setUsername(cleanUser); // Record the latest attempted username for audits
+        entity.setUsername(cleanUser); // A hash of the latest attempted username, for audits
 
         // Exponential backoff: 2^failedAttempts seconds, capped at 1 day (86400 seconds)
         long delaySeconds = (long) Math.pow(2, entity.getFailedAttempts());
