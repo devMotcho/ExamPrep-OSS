@@ -14,7 +14,7 @@ import java.util.UUID;
 
 public interface StudyAreaRepository extends JpaRepository<StudyAreaEntity, UUID> {
 
-    String SUMMARY = "select new com.exam_prep.api.dto.StudyAreaSummaryDto(s.id, s.title, s.description, u.name, u.id, "
+    String SUMMARY = "select new com.exam_prep.api.dto.StudyAreaSummaryDto(s.id, s.title, s.description, u.name, u.publicName, u.id, "
             + "s.createdAt, s.visibility, "
             + "(select count(q) from QuestionEntity q where q.studyArea = s), "
             + "(select count(j) from UserStudyAreaEntity j where j.studyAreaId = s.id)) "

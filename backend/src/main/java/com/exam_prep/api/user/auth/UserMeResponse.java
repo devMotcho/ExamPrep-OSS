@@ -17,6 +17,9 @@ class UserMeResponse {
     private UUID id;
     private String email;
     private String name;
+    private String publicName;
+    /** "google" or "microsoft" when the account signs in through a provider, else null. */
+    private String oauthProvider;
     private String role;
     @JsonProperty("isActive")
     private boolean isActive;

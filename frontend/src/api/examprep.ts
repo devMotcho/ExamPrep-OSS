@@ -31,7 +31,8 @@ export interface StudyArea {
   description: string;
   /** Null when the creator has no display name. */
   createdBy: string | null;
-  createdById: string;
+  /** Only sent to the creator and to staff. */
+  createdById: string | null;
   createdAt: string;
   visibility: 'PUBLIC' | 'PRIVATE';
   questionCount: number;

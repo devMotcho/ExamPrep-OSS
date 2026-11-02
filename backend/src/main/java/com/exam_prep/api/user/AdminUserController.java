@@ -27,6 +27,7 @@ public class AdminUserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AccountDeletionService accountDeletionService;
 
     // ── GET all ────────────────────────────────────────────────────────────────
 
@@ -34,13 +35,11 @@ public class AdminUserController {
     public ResponseEntity<List<UserEntity>> getAllUsers() {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         boolean isDev = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_DEV".equals(a.getAuthority()));
-        if (isDev) {
-            return ResponseEntity.ok(userRepository.findAll());
-        } else {
-            return ResponseEntity.ok(userRepository.findAll().stream()
-                    .filter(u -> !"ROLE_DEV".equals(u.getRole()))
-                    .collect(java.util.stream.Collectors.toList()));
-        }
+        // The community account is not a person: it is not listed and cannot be edited or deleted.
+        return ResponseEntity.ok(userRepository.findAll().stream()
+                .filter(u -> !AccountDeletionService.SYSTEM_ROLE.equals(u.getRole()))
+                .filter(u -> isDev || !"ROLE_DEV".equals(u.getRole()))
+                .collect(java.util.stream.Collectors.toList()));
     }
 
     // ── POST create ────────────────────────────────────────────────────────────
@@ -93,8 +92,8 @@ public class AdminUserController {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         boolean isDev = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_DEV".equals(a.getAuthority()));
 
-        // Hide dev users from standard admins
-        if ("ROLE_DEV".equals(user.getRole()) && !isDev) {
+        // Hide dev users from standard admins, and the community account from everyone
+        if (("ROLE_DEV".equals(user.getRole()) && !isDev) || AccountDeletionService.SYSTEM_ROLE.equals(user.getRole())) {
             throw new IllegalArgumentException("User not found.");
         }
 
@@ -147,8 +146,8 @@ public class AdminUserController {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         boolean isDev = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_DEV".equals(a.getAuthority()));
 
-        // Hide dev users from standard admins
-        if ("ROLE_DEV".equals(user.getRole()) && !isDev) {
+        // Hide dev users from standard admins, and the community account from everyone
+        if (("ROLE_DEV".equals(user.getRole()) && !isDev) || AccountDeletionService.SYSTEM_ROLE.equals(user.getRole())) {
             throw new IllegalArgumentException("User not found.");
         }
 
@@ -157,7 +156,7 @@ public class AdminUserController {
             throw new IllegalArgumentException("Administrator accounts cannot be deleted.");
         }
 
-        userRepository.deleteById(id);
+        accountDeletionService.delete(id);
         return ResponseEntity.ok(Map.of("message", "User deleted successfully."));
     }
 
@@ -175,8 +174,8 @@ public class AdminUserController {
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         boolean isDev = auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_DEV".equals(a.getAuthority()));
 
-        // Hide dev users from standard admins
-        if ("ROLE_DEV".equals(user.getRole()) && !isDev) {
+        // Hide dev users from standard admins, and the community account from everyone
+        if (("ROLE_DEV".equals(user.getRole()) && !isDev) || AccountDeletionService.SYSTEM_ROLE.equals(user.getRole())) {
             throw new IllegalArgumentException("User not found.");
         }
 

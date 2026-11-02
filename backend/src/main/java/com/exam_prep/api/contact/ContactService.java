@@ -46,7 +46,7 @@ public class ContactService {
      * Performs rate limiting and sanitization, then dispatches the notification.
      *
      * @param request   the contact request details
-     * @param ipAddress the client's IP address
+     * @param ipAddress the client's IP address, used only for the in-memory rate limit and never stored
      */
     public void processContactSubmission(ContactRequest request, String ipAddress) {
         // 0. Check if contact form is enabled in configuration
@@ -80,7 +80,6 @@ public class ContactService {
             .email(cleanEmail)
             .subject(cleanSubject)
             .message(cleanMessage)
-            .ipAddress(ipAddress)
             .sentChannels("")
             .type("CONTACT")
             .build();
@@ -95,7 +94,6 @@ public class ContactService {
             body,
             NotificationType.CONTACT,
             Map.of(
-                "ip", ipAddress,
                 "name", cleanName,
                 "email", cleanEmail,
                 "contact_message_id", messageEntity.getId().toString()

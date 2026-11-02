@@ -4,6 +4,7 @@ import com.exam_prep.api.dto.*;
 import com.exam_prep.api.entity.*;
 import com.exam_prep.api.exception.AppException;
 import com.exam_prep.api.repository.*;
+import com.exam_prep.api.user.PublicNames;
 import com.exam_prep.api.user.UserEntity;
 import com.exam_prep.api.user.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -117,7 +118,9 @@ public class StudyAreaService {
         return "%" + limited.toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
     }
 
+    /** Fits each summary to the viewer: what they may see of the creator, and whether they starred it. */
     private void markStarred(List<StudyAreaSummaryDto> summaries, UserEntity user) {
+        summaries.forEach(summary -> summary.showTo(user));
         if (user == null || summaries.isEmpty()) {
             return;
         }
@@ -566,8 +569,8 @@ public class StudyAreaService {
                 .id(entity.getId())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .createdBy(entity.getCreatedBy().getName() == null || entity.getCreatedBy().getName().isBlank() ? null : entity.getCreatedBy().getName())
-                .createdById(entity.getCreatedBy().getId())
+                .createdBy(PublicNames.creatorName(entity.getCreatedBy().getPublicName(), entity.getCreatedBy().getName(), user))
+                .createdById(PublicNames.creatorId(entity.getCreatedBy().getId(), user))
                 .createdAt(entity.getCreatedAt())
                 .visibility(entity.getVisibility())
                 .questionCount(entity.getQuestions().size())

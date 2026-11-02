@@ -37,6 +37,10 @@ public class UserEntity {
     @Column(name = "name")
     private String name;
 
+    /** Shown to other people instead of {@link #name}; null falls back to the first word of the name. */
+    @Column(name = "public_name", length = 60)
+    private String publicName;
+
     @Column(name = "phone")
     private String phone;
 

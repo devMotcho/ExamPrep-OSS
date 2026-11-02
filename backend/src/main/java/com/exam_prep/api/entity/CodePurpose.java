@@ -6,5 +6,9 @@ public enum CodePurpose {
     PASSWORD_RESET,
     PASSWORD_CHANGE,
     EMAIL_CONFIRMATION,
-    CONTACT
+    CONTACT,
+    /** Sent to the new address before the sign-in email changes. */
+    EMAIL_CHANGE,
+    /** Confirms deleting an account that signs in with Google or Microsoft and so has no password to check. */
+    ACCOUNT_DELETION
 }

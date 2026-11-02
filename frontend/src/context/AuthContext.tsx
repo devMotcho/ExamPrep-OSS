@@ -7,6 +7,8 @@ interface UserProfile {
   id: number;
   email: string;
   name: string;
+  publicName?: string | null;
+  oauthProvider?: string | null;
   role: string;
   isActive: boolean;
   isConfirmed: boolean;

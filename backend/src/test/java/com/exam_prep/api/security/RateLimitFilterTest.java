@@ -42,6 +42,20 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void accountChangesThatCheckThePasswordHaveTheLoginLimit() throws Exception {
+        properties.setLoginLimit(1);
+        properties.setDefaultLimit(50);
+        RateLimitFilter filter = filter();
+
+        assertEquals(200, post(filter, "/api/auth/me/email"));
+        assertEquals(429, post(filter, "/api/auth/me/email"));
+        assertEquals(200, send(filter, "DELETE", "/api/auth/me", "10.0.0.1"));
+        assertEquals(429, send(filter, "DELETE", "/api/auth/me", "10.0.0.1"));
+        assertEquals(200, send(filter, "GET", "/api/auth/me", "10.0.0.1"));
+        assertEquals(200, send(filter, "GET", "/api/auth/me", "10.0.0.1"));
+    }
+
+    @Test
     void aGetDoesNotGiveASensitivePostTheDefaultLimit() throws Exception {
         properties.setLoginLimit(2);
         properties.setDefaultLimit(50);

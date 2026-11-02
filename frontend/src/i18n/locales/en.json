@@ -27,6 +27,7 @@
     "system": "System",
     "accountSettings": "Account Settings",
     "changePassword": "Change Password",
+    "yourData": "Your data",
     "menu": "Menu",
     "starredAreas": "Starred Areas",
     "study areas": "Study Areas",
@@ -764,5 +765,39 @@
     "tabStudy": "Study",
     "tabProgress": "Progress",
     "tabHistory": "History"
+  },
+  "account": {
+    "data": {
+      "title": "Your data",
+      "description": "See, correct and download what is stored about you, or delete your account.",
+      "profileTitle": "Profile",
+      "name": "Name",
+      "publicName": "Public name",
+      "anonymous": "Anonymous",
+      "publicNameHelp": "Shown on the study areas you make public. Leave it empty to show the first word of your name.",
+      "save": "Save",
+      "profileSaved": "Profile saved.",
+      "profileFailed": "Could not save the profile.",
+      "emailTitle": "Email",
+      "emailProvider": "This account signs in with {{provider}}, so the email is managed there.",
+      "newEmail": "New email",
+      "password": "Current password",
+      "code": "Code from the email",
+      "sendCode": "Send code",
+      "confirmEmail": "Change email",
+      "codeSentTo": "We sent a code to {{email}}.",
+      "codeFailed": "Could not send the code.",
+      "emailChanged": "Email changed.",
+      "emailFailed": "Could not change the email.",
+      "exportTitle": "Download your data",
+      "exportHelp": "A JSON file with your account, study areas, questions, exams and everything else stored about you.",
+      "download": "Download",
+      "exportFailed": "Could not prepare the download.",
+      "deleteTitle": "Delete account",
+      "deleteHelp": "This cannot be undone. Your profile, exams, private study areas and images are deleted. Study areas other people use stay, credited to “Community”.",
+      "deleteForever": "Delete my account",
+      "deleted": "Your account was deleted.",
+      "deleteFailed": "Could not delete the account."
+    }
   }
 }
